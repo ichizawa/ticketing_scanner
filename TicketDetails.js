@@ -16,10 +16,10 @@ export default function TicketDetails({navigation, route}) {
         }
         return dots
     }
-
+    // fetch(`https://mediaonetix.com/scan/ticket/${data.data}`)
     const redeemTicket = () => {
         try {
-            fetch(`https://mediaonetix.com/scan/ticket/${data.data}`)
+            fetch(`http://192.168.110.116:8000/scan/ticket/${data.data}`)
             .then(response => response.json())
             .then(json => {
                 alert(json.message);
