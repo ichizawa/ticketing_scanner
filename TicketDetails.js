@@ -26,7 +26,7 @@ import {
     // fetch(`http://192.168.110.116:8000/scan/ticket/${data.data}`
     const redeemTicket = () => {
       try {
-        fetch(`http://mediaonetix.com/scan/ticket/${data.data}`)
+        fetch(`https://mediaonetix.com/scan/ticket/${data.data}`)
           .then((response) => response.json())
           .then((json) => {
             alert(json.message);
@@ -44,27 +44,11 @@ import {
         <View style={styles.header}>
           <Text style={styles.text}>MY QR CODE</Text>
           <Text style={styles.subText}>Ticket Successfully Scanned!</Text>
-          <View style={styles.horizontalRuleTop}>
-            <View style={styles.bigDotsLeft}></View>
-            {getDots() !== null
-              ? getDots().map((dot) => {
-                  return dot;
-                })
-              : null}
-            <View style={styles.bigDotsRight}></View>
-          </View>
+          
           <View style={styles.ticketBody}>
             <QRCode value={data.data} size={300} />
           </View>
-          <View style={styles.horizontalRuleBottom}>
-            <View style={styles.bigDotsLeft}></View>
-            {getDots() !== null
-              ? getDots().map((dot) => {
-                  return dot;
-                })
-              : null}
-            <View style={styles.bigDotsRight}></View>
-          </View>
+          
         </View>
         <View style={styles.containerButton}>
           <View style={styles.submitButtonContainer}>
