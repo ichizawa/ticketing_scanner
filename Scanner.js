@@ -1,5 +1,6 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useState } from "react";
+import NetInfo from "@react-native-community/netinfo";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,6 +14,15 @@ import { StatusBar } from "expo-status-bar";
 export default function Scanner({ navigation }) {
   const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
+  const [isConnected, setConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setConnected(state.isConnected);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   if (!permission) {
     return <View />;
@@ -23,11 +33,19 @@ export default function Scanner({ navigation }) {
       <View style={styles.permissionContainer}>
         <View style={styles.topBar} />
         <View style={styles.logoContainer}>
-          <Image style={styles.logo} source={require("./assets/mediaone.png")} />
+          <Image
+            style={styles.logo}
+            source={require("./assets/mediaone.png")}
+          />
           <Text style={styles.textLogo}>EDIAONE TIX</Text>
         </View>
-        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.buttonGrant}>
+        <Text style={styles.permissionText}>
+          We need your permission to show the camera
+        </Text>
+        <TouchableOpacity
+          onPress={requestPermission}
+          style={styles.buttonGrant}
+        >
           <Text style={styles.buttonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
@@ -35,11 +53,24 @@ export default function Scanner({ navigation }) {
   }
 
   return (
-    <ImageBackground source={require("./assets/bg.png")} style={styles.container}>
+    <ImageBackground
+      source={require("./assets/bg.png")}
+      style={styles.container}
+    >
       <StatusBar hidden={false} translucent={true} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>QR Reader</Text>
       </View>
+      {!isConnected && (
+        <View style={styles.offlineContainer}>
+          <Text style={[styles.offlineText, styles.largeText]}>
+            You are offline
+          </Text>
+          <Text style={styles.offlineText}>
+            Try connected with internet or come back later
+          </Text>
+        </View>
+      )}
       <View style={styles.cameraWrapper}>
         <ImageBackground
           source={require("./assets/frame.png")}
@@ -56,11 +87,19 @@ export default function Scanner({ navigation }) {
           />
         </ImageBackground>
         <View style={styles.overlayText}>
-          <Image source={require("./assets/scanner.png")} style={styles.scannerIcon} />
-          <Text style={styles.text}>Place the QR Code inside the frame to scan.</Text>
+          <Image
+            source={require("./assets/scanner.png")}
+            style={styles.scannerIcon}
+          />
+          <Text style={styles.text}>
+            Place the QR Code inside the frame to scan.
+          </Text>
         </View>
       </View>
-      <ImageBackground source={require("./assets/footer1.png")} style={styles.footer} />
+      <ImageBackground
+        source={require("./assets/footer1.png")}
+        style={styles.footer}
+      />
     </ImageBackground>
   );
 }
@@ -73,18 +112,18 @@ const styles = StyleSheet.create({
   },
   header: {
     width: "100%",
-    height: 70,  
+    height: 70,
     backgroundColor: "#0F355A",
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
-    top: 0,  
+    top: 0,
     left: 0,
     right: 0,
-    zIndex: 10,  
+    zIndex: 10,
     paddingTop: 15,
     borderBottomRightRadius: 5,
-    borderBottomLeftRadius: 5
+    borderBottomLeftRadius: 5,
   },
   headerTitle: {
     color: "#fff",
@@ -151,8 +190,8 @@ const styles = StyleSheet.create({
 
   cameraWrapper: {
     flex: 1,
-    justifyContent: "center",  
-    alignItems: "center",  
+    justifyContent: "center",
+    alignItems: "center",
   },
   frameImage: {
     width: 300,
@@ -187,7 +226,26 @@ const styles = StyleSheet.create({
     height: 140,
     position: "absolute",
     bottom: 0,
-    resizeMode: "contain"
+    resizeMode: "contain",
+  },
+  offlineContainer: {
+    backgroundColor: "#b52424",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    zIndex: 10,
+    position: "absolute",
+    top: 65,
+    paddingBottom: 10,
+    paddingTop: 10,
+    paddingHorizontal: 20,
+  },
+  offlineText: {
+    color: "#fff",
+    textAlign: "center",
+  },
+  largeText: {
+    fontWeight: "bold",
+    fontSize: 24,
   },
 });
-
