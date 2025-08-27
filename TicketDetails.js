@@ -45,9 +45,11 @@ export default function TicketDetails({ navigation, route }) {
         })
         .catch((error) => {
           console.error(error);
+          alert("Error", error);
         });
     } catch (e) {
       console.log(e);
+      alert(e);
     }
   };
 
