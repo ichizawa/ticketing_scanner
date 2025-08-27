@@ -8,13 +8,16 @@ import {
   View,
   Image,
   ImageBackground,
+  SafeAreaView,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useIsFocused } from '@react-navigation/native';
 
 export default function Scanner({ navigation }) {
   const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [isConnected, setConnected] = useState(true);
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -35,7 +38,7 @@ export default function Scanner({ navigation }) {
         <View style={styles.logoContainer}>
           <Image
             style={styles.logo}
-            source={require("./assets/mediaone.png")}
+            source={require("../assets/mediaone.png")}
           />
           <Text style={styles.textLogo}>EDIAONE TIX</Text>
         </View>
@@ -54,52 +57,56 @@ export default function Scanner({ navigation }) {
 
   return (
     <ImageBackground
-      source={require("./assets/bg.png")}
+      source={require("../assets/bg.png")}
       style={styles.container}
     >
-      <StatusBar hidden={false} translucent={true} />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>QR Reader</Text>
-      </View>
-      {!isConnected && (
-        <View style={styles.offlineContainer}>
-          <Text style={[styles.offlineText, styles.largeText]}>
-            You are offline
-          </Text>
-          <Text style={styles.offlineText}>
-            Try connected with internet or come back later
-          </Text>
+      <SafeAreaView style={styles.safeArea}>
+        {/* <StatusBar hidden={false} translucent={true} /> */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>QR Reader</Text>
         </View>
-      )}
-      <View style={styles.cameraWrapper}>
+        {!isConnected && (
+          <View style={styles.offlineContainer}>
+            <Text style={[styles.offlineText, styles.largeText]}>
+              You are offline
+            </Text>
+            <Text style={styles.offlineText}>
+              Try connected with internet or come back later
+            </Text>
+          </View>
+        )}
+        <View style={styles.cameraWrapper}>
+          <ImageBackground
+            source={require("../assets/frame.png")}
+            style={styles.frameImage}
+            resizeMode="contain"
+          >
+            {isFocused && ( // <-- only render camera when screen is focused
+              <CameraView
+                style={styles.camera}
+                facing={facing}
+                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                onBarcodeScanned={(data) => {
+                  navigation.navigate("TicketDetails", { data: data });
+                }}
+              />
+            )}
+          </ImageBackground>
+          <View style={styles.overlayText}>
+            <Image
+              source={require("../assets/scanner.png")}
+              style={styles.scannerIcon}
+            />
+            <Text style={styles.text}>
+              Place the QR Code inside the frame to scan.
+            </Text>
+          </View>
+        </View>
         <ImageBackground
-          source={require("./assets/frame.png")}
-          style={styles.frameImage}
-          resizeMode="contain"
-        >
-          <CameraView
-            style={styles.camera}
-            facing={facing}
-            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-            onBarcodeScanned={(data) => {
-              navigation.navigate("TicketDetails", { data: data });
-            }}
-          />
-        </ImageBackground>
-        <View style={styles.overlayText}>
-          <Image
-            source={require("./assets/scanner.png")}
-            style={styles.scannerIcon}
-          />
-          <Text style={styles.text}>
-            Place the QR Code inside the frame to scan.
-          </Text>
-        </View>
-      </View>
-      <ImageBackground
-        source={require("./assets/footer1.png")}
-        style={styles.footer}
-      />
+          source={require("../assets/footer1.png")}
+          style={styles.footer}
+        />
+      </SafeAreaView>
     </ImageBackground>
   );
 }
@@ -107,8 +114,10 @@ export default function Scanner({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  safeArea: {
+    flex: 1,
     alignItems: "center",
-    backgroundColor: "#fff",
   },
   header: {
     width: "100%",
@@ -121,7 +130,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingTop: 15,
+    paddingTop: 50,
     borderBottomRightRadius: 5,
     borderBottomLeftRadius: 5,
   },

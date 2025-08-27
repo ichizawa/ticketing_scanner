@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ticketing-scanner",
+    "name": "Mediaonetix Scanner",
     "slug": "ticketing-scanner",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,9 +17,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "runtimeVersion": {
-        "policy": "appVersion"
-      }
+      "runtimeVersion": "1.0.0"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,6 +25,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.anonymous.ticketingscanner",
+      "intentFilters": [],
+      "config": {
+        "cleartextTraffic": true
+      },
       "runtimeVersion": "1.0.0"
     },
     "web": {
@@ -34,9 +36,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "baa2f54c-61b7-45dd-b6ee-3b1e1dd5394a"
+        "projectId": "fb4f1904-11fd-4bce-aa77-a6b6c997d189"
       }
     },
-    "owner": "xiange"
+    "owner": "ichizawa"
   }
 }
