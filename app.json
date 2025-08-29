@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ticketing-scanner",
-    "slug": "ticketing-scanner",
+    "name": "ticketing-old-scanner",
+    "slug": "ticketing-old-scanner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/mt_icon.png",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.ticketingscanner",
+      "bundleIdentifier": "com.anonymous.ticketingoldscanner",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/mt_icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.ticketingscanner",
+      "package": "com.anonymous.ticketingoldscanner",
       "runtimeVersion": "1.0.0"
     },
     "web": {
@@ -34,9 +34,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "baa2f54c-61b7-45dd-b6ee-3b1e1dd5394a"
+        "projectId": "eee28401-933d-42eb-af88-e8d6ef9a98f0"
       }
     },
-    "owner": "xiange"
+    "owner": "ichizawa"
   }
 }
