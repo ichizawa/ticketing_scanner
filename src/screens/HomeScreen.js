@@ -1,7 +1,7 @@
 import {
   StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground, Alert
 } from 'react-native'
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useRef, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AuthContext } from '../context/AuthContext'
@@ -13,6 +13,13 @@ const HERO_EVENTS = [
   { id: 1, title: 'ELECTRONIC PARADISE', genre: 'ELECTRONIC', desc: 'The ultimate beach festival experience with top DJs.', image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800' },
   { id: 2, title: 'ART EXPO 2026', genre: 'ART & CULTURE', desc: 'Modern masterpieces from around the globe.', image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800' },
   { id: 3, title: 'TECH SUMMIT', genre: 'INNOVATION', desc: 'Building the future together with industry leaders.', image: 'https://images.unsplash.com/photo-1540575861501-7c03b177a2a5?auto=format&fit=crop&q=80&w=800' },
+]
+
+// For seamless loop: [Last, 0, 1, 2, First]
+const CLONED_EVENTS = [
+  HERO_EVENTS[HERO_EVENTS.length - 1],
+  ...HERO_EVENTS,
+  HERO_EVENTS[0],
 ]
 
 const DON_MISS = [
@@ -32,6 +39,51 @@ const RECENT_EVENTS = [
 export default function HomeScreen({ navigation }) {
   const { logout } = useContext(AuthContext);
   const [favorites, setFavorites] = useState([2])
+  const [activeIndex, setActiveIndex] = useState(0)
+  const scrollRef = useRef(null)
+
+  // Auto-scroll logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      let nextIndex = activeIndex + 1;
+      
+      scrollRef.current?.scrollTo({
+        x: nextIndex * width,
+        animated: true,
+      });
+
+      // Update state after animation would typically finish
+      setTimeout(() => {
+        if (nextIndex >= CLONED_EVENTS.length - 1) {
+          // If at the clone of the first item, jump back to the actual first item
+          scrollRef.current?.scrollTo({ x: width, animated: false });
+          setActiveIndex(1);
+        } else {
+          setActiveIndex(nextIndex);
+        }
+      }, 100); // 100ms transition time
+    }, 3000); // 3 seconds interval
+
+    return () => clearInterval(interval);
+  }, [activeIndex]);
+
+  const handleScroll = (event) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / width);
+
+    // Silent jumps for manual swipe
+    if (index === 0) {
+      // Swiped into the clone of the last item
+      scrollRef.current?.scrollTo({ x: HERO_EVENTS.length * width, animated: false });
+      setActiveIndex(HERO_EVENTS.length);
+    } else if (index === CLONED_EVENTS.length - 1) {
+      // Swiped into the clone of the first item
+      scrollRef.current?.scrollTo({ x: width, animated: false });
+      setActiveIndex(1);
+    } else {
+      setActiveIndex(index);
+    }
+  };
 
   const toggleFavorite = (id) => {
     setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id])
@@ -83,13 +135,16 @@ export default function HomeScreen({ navigation }) {
           
           {/* Hero Carousel */}
           <ScrollView 
+            ref={scrollRef}
             horizontal 
             pagingEnabled 
             showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleScroll}
+            contentOffset={{ x: width, y: 0 }} // Start at first real item
             style={styles.heroCarousel}
           >
-            {HERO_EVENTS.map(event => (
-              <View key={event.id} style={styles.heroCard}>
+            {CLONED_EVENTS.map((event, idx) => (
+              <View key={`${event.id}-${idx}`} style={styles.heroCard}>
                 <ImageBackground source={{ uri: event.image }} style={styles.heroBg}>
                   <LinearGradient
                     colors={['transparent', 'rgba(5,10,20,0.9)']}

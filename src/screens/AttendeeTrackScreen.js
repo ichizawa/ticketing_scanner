@@ -2,8 +2,10 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   Dimensions, StatusBar, ScrollView, Animated
 } from 'react-native'
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { AuthContext } from '../context/AuthContext'
+import { Alert } from 'react-native'
 
 const { width } = Dimensions.get('window')
 
@@ -84,7 +86,7 @@ const BgOrbs = () => (
 )
 
 
-function EventSelectionView({ onSelect }) {
+function EventSelectionView({ onSelect, handleLogout, navigation }) {
   const pulseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -104,12 +106,20 @@ function EventSelectionView({ onSelect }) {
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.dummySpace} />
+          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
+            <View style={styles.menuLine} />
+            <View style={[styles.menuLine, { width: 14 }]} />
+            <View style={styles.menuLine} />
+          </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerSuperTitle}>ATTENDANCE TRACKER</Text>
-            <Text style={styles.headerEventName}>Select an Event</Text>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
           </View>
-          <View style={styles.dummySpace} />
+          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
+            <View style={styles.profileAvatar} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -208,7 +218,7 @@ function EventSelectionView({ onSelect }) {
 }
 
 
-function AttendanceReportView({ event, onBack }) {
+function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
   const progressAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -240,10 +250,14 @@ function AttendanceReportView({ event, onBack }) {
             <Text style={[styles.backArrow, { color: event.accentColor }]}>←</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerSuperTitle}>Attendance Analytics</Text>
-            <Text style={styles.headerEventName} numberOfLines={1}>{event.name}</Text>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
           </View>
-          <View style={styles.dummySpace} />
+          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
+            <View style={styles.profileAvatar} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -336,15 +350,35 @@ function AttendanceReportView({ event, onBack }) {
 
 
 export default function AttendeeTrackScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
   const [selectedEvent, setSelectedEvent] = useState(null)
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', onPress: () => {} },
+        {
+          text: 'Logout',
+          onPress: () => {
+            logout();
+          },
+          style: 'destructive'
+        }
+      ]
+    )
+  }
+
   if (!selectedEvent) {
-    return <EventSelectionView onSelect={setSelectedEvent} />
+    return <EventSelectionView onSelect={setSelectedEvent} handleLogout={handleLogout} navigation={navigation} />
   }
   return (
     <AttendanceReportView
       event={selectedEvent}
       onBack={() => setSelectedEvent(null)}
+      handleLogout={handleLogout}
+      navigation={navigation}
     />
   )
 }
@@ -369,11 +403,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 15,
   },
-  backBtn:          { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backArrow:        { fontSize: 24 },
-  headerCenter:     { alignItems: 'center', flex: 1 },
-  headerSuperTitle: { color: '#3D6080', fontSize: 12, fontWeight: '700', letterSpacing: 1.5, marginBottom: 2 },
-  headerEventName:  { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', textAlign: 'center', maxWidth: width * 0.6 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backArrow: { fontSize: 24 },
+  headerTitle: { fontSize: 20 },
+  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
+  headerTix: { color: '#00C2FF', fontWeight: '800' },
+  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
+  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
   dummySpace:       { width: 40 },
 
   pageHeadRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

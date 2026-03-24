@@ -2,8 +2,10 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   Animated, Dimensions, StatusBar
 } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { AuthContext } from '../context/AuthContext'
+import { Alert } from 'react-native'
 
 const { width, height } = Dimensions.get('window')
 const SCANNER_SIZE = width * 0.72
@@ -39,11 +41,29 @@ const MOCK_USED = {
 }
 
 export default function ScannerScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
   const [scanResult, setScanResult] = useState(null)
   const [resultData, setResultData] = useState(null)
   const [isScanning, setIsScanning] = useState(true)
   const [scanCount, setScanCount] = useState(0)
   const [successCount, setSuccessCount] = useState(0)
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', onPress: () => {} },
+        {
+          text: 'Logout',
+          onPress: () => {
+            logout();
+          },
+          style: 'destructive'
+        }
+      ]
+    )
+  }
 
   // Animations
   const scanLineAnim = useRef(new Animated.Value(0)).current
@@ -155,10 +175,12 @@ export default function ScannerScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeArea}>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <Animated.View style={[styles.header, { opacity: headerFade }]}>
-          <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
-            <Text style={styles.backArrow}>←</Text>
+          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
+            <View style={styles.menuLine} />
+            <View style={[styles.menuLine, { width: 14 }]} />
+            <View style={styles.menuLine} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
@@ -170,10 +192,8 @@ export default function ScannerScreen({ navigation }) {
               <Text style={styles.liveText}>LIVE</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
+          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
+            <View style={styles.profileAvatar} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -393,6 +413,8 @@ const styles = StyleSheet.create({
   liveText: { color: '#00E5A0', fontSize: 9, fontWeight: '700', letterSpacing: 2 },
   menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
   menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
+  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
 
   // Stats
   statsBar: {

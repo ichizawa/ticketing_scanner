@@ -2,8 +2,10 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   Dimensions, StatusBar, ScrollView, Animated
 } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { AuthContext } from '../context/AuthContext'
+import { Alert } from 'react-native'
 
 const { width } = Dimensions.get('window')
 
@@ -87,7 +89,7 @@ const BgDecor = () => (
   </>
 )
 
-function EventSelectionView({ onSelect }) {
+function EventSelectionView({ onSelect, handleLogout, navigation }) {
   const pulseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -102,15 +104,25 @@ function EventSelectionView({ onSelect }) {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
-      <BgDecor />
+      <View style={styles.bgOrb1}/>
+      <View style={styles.bgOrb2}/>
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ width: 40 }} />
-          <Text style={styles.headerTitle}>EVENT TRACKER</Text>
-          <TouchableOpacity style={styles.menuBtn}>
-            <Text style={styles.menuIcon}>⋮</Text>
+          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
+            <View style={styles.menuLine} />
+            <View style={[styles.menuLine, { width: 14 }]} />
+            <View style={styles.menuLine} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
+            <View style={styles.profileAvatar} />
           </TouchableOpacity>
         </View>
 
@@ -204,7 +216,7 @@ function EventSelectionView({ onSelect }) {
 }
 
 
-function TicketReportView({ event, onBack }) {
+function TicketReportView({ event, onBack, handleLogout, navigation }) {
   const pulseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -230,9 +242,14 @@ function TicketReportView({ event, onBack }) {
           <TouchableOpacity style={styles.backBtn} onPress={onBack}>
             <Text style={[styles.backArrow, { color: event.accentColor }]}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>EVENT TRACKER</Text>
-          <TouchableOpacity style={styles.menuBtn}>
-            <Text style={styles.menuIcon}>⋮</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
+            <View style={styles.profileAvatar} />
           </TouchableOpacity>
         </View>
 
@@ -318,12 +335,30 @@ function TicketReportView({ event, onBack }) {
 }
 
 export default function EventScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
   const [selectedEvent, setSelectedEvent] = useState(null)
 
-  if (!selectedEvent) {
-    return <EventSelectionView onSelect={setSelectedEvent} />
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', onPress: () => {} },
+        {
+          text: 'Logout',
+          onPress: () => {
+            logout();
+          },
+          style: 'destructive'
+        }
+      ]
+    )
   }
-  return <TicketReportView event={selectedEvent} onBack={() => setSelectedEvent(null)} />
+
+  if (!selectedEvent) {
+    return <EventSelectionView onSelect={setSelectedEvent} handleLogout={handleLogout} navigation={navigation} />
+  }
+  return <TicketReportView event={selectedEvent} onBack={() => setSelectedEvent(null)} handleLogout={handleLogout} navigation={navigation} />
 }
 
 
@@ -353,9 +388,13 @@ const styles = StyleSheet.create({
   },
   backBtn:     { width: 40, height: 40, justifyContent: 'center' },
   backArrow:   { fontSize: 24, fontWeight: '300' },
-  headerTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 3 },
-  menuBtn:     { width: 40, height: 40, alignItems: 'flex-end', justifyContent: 'center' },
-  menuIcon:    { color: '#4A8AAF', fontSize: 24, fontWeight: '900' },
+  headerTitle: { fontSize: 20 },
+  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
+  headerTix: { color: '#00C2FF', fontWeight: '800' },
+  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
+  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
 
   // Selection heading
   pageHeadRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
