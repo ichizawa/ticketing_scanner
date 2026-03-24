@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useContext } from 'react';
 import LoginScreen from "../screens/auth/LoginScreen";
 import DrawerNavigation from "./DrawerNavigation";
-import ScannerScreen from '../screens/ScannerScreen';
+import ScannerScreen from '../screens/organizer/ScannerScreen';
 import { AuthContext } from '../context/AuthContext';
 
 const Stack = createNativeStackNavigator();
