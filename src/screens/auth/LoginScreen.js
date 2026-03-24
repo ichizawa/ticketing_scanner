@@ -1,15 +1,16 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Dimensions, Animated, KeyboardAvoidingView, Platform } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Dimensions, Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { AuthContext } from '../../context/AuthContext';
 
 const { width, height } = Dimensions.get('window')
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [emailFocused, setEmailFocused] = useState(false)
-  const [passwordFocused, setPasswordFocused] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+  const { login, userInfo } = React.useContext(AuthContext);
+  const emailRef = useRef(null)
+  const passwordRef = useRef(null)
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -18,6 +19,28 @@ export default function LoginScreen({ navigation }) {
   const card1Anim = useRef(new Animated.Value(60)).current
   const card2Anim = useRef(new Animated.Value(80)).current
   const card3Anim = useRef(new Animated.Value(100)).current
+  const [showPassword, setShowPassword] = useState(false)
+
+  // Memoize callbacks to prevent re-renders
+  const handleEmailChange = useCallback((text) => {
+    setEmail(text)
+  }, [])
+
+  const handlePasswordChange = useCallback((text) => {
+    setPassword(text)
+  }, [])
+
+  const handleShowPassword = useCallback(() => {
+    setShowPassword(prev => !prev)
+  }, [])
+
+  const handleLogin = useCallback(() => {
+    login(email, password)
+  }, [email, password, login])
+
+  const handleNavigateToScan = useCallback(() => {
+    navigation.navigate("ScanLogin")
+  }, [navigation])
 
   useEffect(() => {
     Animated.sequence([
@@ -35,9 +58,11 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={false}
       >
         {/* Background decorative elements */}
         <View style={styles.bgDecor1} />
@@ -85,44 +110,44 @@ export default function LoginScreen({ navigation }) {
             </Animated.View>
 
             {/* Email Input */}
-            <Animated.View style={[styles.inputGroup, { transform: [{ translateY: card2Anim }], opacity: fadeAnim }]}>
+            <View style={styles.inputGroupContainer}>
               <Text style={styles.label}>EMAIL ADDRESS</Text>
-              <View style={[styles.inputWrap, emailFocused && styles.inputWrapFocused]}>
+              <View style={styles.inputWrap}>
                 <Text style={styles.inputIcon}>✉</Text>
                 <TextInput
+                  ref={emailRef}
+                  editable={true}
                   style={styles.input}
                   placeholder="you@mediaone.com"
                   placeholderTextColor="#4A5568"
-                  keyboardType="email-address"
                   autoCapitalize="none"
+                  keyboardType="email-address"
                   value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
+                  onChangeText={handleEmailChange}
                 />
               </View>
-            </Animated.View>
+            </View>
 
             {/* Password Input */}
-            <Animated.View style={[styles.inputGroup, { transform: [{ translateY: card2Anim }], opacity: fadeAnim }]}>
+            <View style={styles.inputGroupContainer}>
               <Text style={styles.label}>PASSWORD</Text>
-              <View style={[styles.inputWrap, passwordFocused && styles.inputWrapFocused]}>
-                <Text style={styles.inputIcon}>⬤</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>⬅</Text>
                 <TextInput
+                  ref={passwordRef}
+                  editable={true}
                   style={styles.input}
                   placeholder="••••••••"
                   placeholderTextColor="#4A5568"
                   secureTextEntry={!showPassword}
                   value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
+                  onChangeText={handlePasswordChange}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                <TouchableOpacity onPress={handleShowPassword} style={styles.eyeBtn}>
                   <Text style={styles.eyeIcon}>{showPassword ? '○' : '◉'}</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
 
             {/* Forgot Password */}
             <Animated.View style={[styles.forgotRow, { transform: [{ translateY: card2Anim }], opacity: fadeAnim }]}>
@@ -136,10 +161,7 @@ export default function LoginScreen({ navigation }) {
               <TouchableOpacity
                 style={styles.loginBtn}
                 activeOpacity={0.85}
-                onPress={() => {
-                  navigation.navigate('Main');
-                }}
-              >
+                onPress={handleLogin}>
                 <View style={styles.loginBtnInner}>
                   <Text style={styles.loginBtnText}>SIGN IN</Text>
                   <Text style={styles.loginBtnArrow}>→</Text>
@@ -157,9 +179,7 @@ export default function LoginScreen({ navigation }) {
             {/* SSO Button */}
             <Animated.View style={{ transform: [{ translateY: card3Anim }], opacity: fadeAnim }}>
               <TouchableOpacity
-                onPress={() => {
-                  navigation.navigate("ScanLogin");
-                }}
+                onPress={handleNavigateToScan}
                 style={styles.ssoBtn} activeOpacity={0.85}>
                 <Text style={styles.ssoBtnText}>Continue with QR</Text>
               </TouchableOpacity>
@@ -174,7 +194,7 @@ export default function LoginScreen({ navigation }) {
             </Text>
           </Animated.View>
         </View>
-      </KeyboardAvoidingView>
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -184,8 +204,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#050A14',
   },
-  keyboardView: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   container: {
     flex: 1,
@@ -360,6 +383,9 @@ const styles = StyleSheet.create({
   },
 
   // Inputs
+  inputGroupContainer: {
+    marginBottom: 16,
+  },
   inputGroup: {
     marginBottom: 16,
   },
