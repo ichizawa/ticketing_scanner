@@ -1,9 +1,10 @@
 import {
-  StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground
+  StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground, Alert
 } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
+import { AuthContext } from '../context/AuthContext'
 
 const { width } = Dimensions.get('window')
 
@@ -29,10 +30,28 @@ const RECENT_EVENTS = [
 ]
 
 export default function HomeScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
   const [favorites, setFavorites] = useState([2])
 
   const toggleFavorite = (id) => {
     setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id])
+  }
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', onPress: () => {} },
+        {
+          text: 'Logout',
+          onPress: () => {
+            logout();
+          },
+          style: 'destructive'
+        }
+      ]
+    )
   }
 
   return (
@@ -55,7 +74,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.headerTix}>Tix</Text>
             </Text>
           </View>
-          <TouchableOpacity style={styles.profileBtn}>
+          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
             <View style={styles.profileAvatar} />
           </TouchableOpacity>
         </View>
