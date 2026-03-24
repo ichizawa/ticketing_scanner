@@ -24,6 +24,8 @@ export default function DrawerNavigation() {
                 component={ScannerScreen}
                 options={{ title: "Ticket Scanner" }}
             />
+
+            
         </Drawer.Navigator>
     );
 }
