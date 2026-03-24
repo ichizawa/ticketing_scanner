@@ -26,6 +26,18 @@ export default function DrawerNavigation() {
                 component={ScannerScreen}
                 options={{ title: "Ticket Scanner" }}
             />
+            <Drawer.Screen
+                name="Event"
+                component={EventScreen}
+                options={{ title: "Event Management" }}
+            />
+
+            <Drawer.Screen
+                name="AttendeeTrack"
+                component={AttendeeTrackScreen}
+                options={{ title: "Attendee Tracking" }}
+            />
+
         </Drawer.Navigator>
     );
 }
