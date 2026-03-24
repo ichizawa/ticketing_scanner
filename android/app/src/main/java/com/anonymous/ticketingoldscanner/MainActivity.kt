@@ -1,4 +1,4 @@
-package com.anonymous.ticketingscanner
+package com.anonymous.ticketingoldscanner
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
