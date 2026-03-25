@@ -16,7 +16,6 @@ const Drawer = createDrawerNavigator();
 export default function DrawerNavigation({ route }) {
     const { userInfo } = useContext(AuthContext);
 
-    // Check if user is a merchant (handle different API response structures)
     const userRole = userInfo?.role || userInfo?.user?.role || userInfo?.type;
     const isMerchant = userRole === 'merchant';
 
@@ -42,19 +41,9 @@ export default function DrawerNavigation({ route }) {
                         options={{ title: "Dashboard" }}
                     />
                     <Drawer.Screen
-                        name="MerchantScanner"
-                        component={ScannerScreen}
-                        options={{ title: "Ticket Scanner" }}
-                    />
-                    <Drawer.Screen
-                        name="MerchantEvent"
-                        component={EventScreen}
-                        options={{ title: "Event Management" }}
-                    />
-                    <Drawer.Screen
-                        name="MerchantAttendeeTrack"
-                        component={AttendeeTrackScreen}
-                        options={{ title: "Track Attendee" }}
+                        name="MerchantManageEvent"
+                        component={ManageEventScreen}
+                        options={{ title: "Manage Events" }}
                     />
                 </>
             ) : null}
@@ -67,9 +56,19 @@ export default function DrawerNavigation({ route }) {
                         options={{ title: "Dashboard" }}
                     />
                     <Drawer.Screen
-                        name="StaffManageEvent"
-                        component={ManageEventScreen}
-                        options={{ title: "Manage Events" }}
+                        name="OrganizerScanner"
+                        component={ScannerScreen}
+                        options={{ title: "Ticket Scanner" }}
+                    />
+                    <Drawer.Screen
+                        name="OrganizerEvent"
+                        component={EventScreen}
+                        options={{ title: "Event Management" }}
+                    />
+                    <Drawer.Screen
+                        name="OrganizerAttendeeTrack"
+                        component={AttendeeTrackScreen}
+                        options={{ title: "Track Attendee" }}
                     />
                 </>
             ) : null}
