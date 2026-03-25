@@ -154,7 +154,10 @@ export default function HomeScreen({ navigation }) {
                     <Text style={styles.heroTitle}>{event.title}</Text>
                     <Text style={styles.heroSubtitle}>{event.desc}</Text>
                     
-                    <TouchableOpacity style={styles.heroFab}>
+                    <TouchableOpacity 
+                        style={styles.heroFab}
+                        onPress={() => navigation.navigate('CustomerPurchase', { event })}
+                    >
                         <Text style={styles.heroFabText}>Get Tickets Now</Text>
                     </TouchableOpacity>
                   </LinearGradient>
@@ -184,7 +187,10 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.vCardLoc}>{item.venue}</Text>
                         <Text style={styles.vCardDate}>{item.time}</Text>
                     </View>
-                    <TouchableOpacity style={styles.vCardBuyBtn}>
+                    <TouchableOpacity 
+                        style={styles.vCardBuyBtn}
+                        onPress={() => navigation.navigate('CustomerPurchase', { event: item })}
+                    >
                         <Text style={styles.vCardBuyText}>Get Tickets</Text>
                     </TouchableOpacity>
                 </View>

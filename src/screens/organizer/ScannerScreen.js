@@ -4,7 +4,7 @@ import {
 } from 'react-native'
 import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { AuthContext } from '../context/AuthContext'
+import { AuthContext } from '../../context/AuthContext'
 import { Alert } from 'react-native'
 
 const { width, height } = Dimensions.get('window')

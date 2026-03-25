@@ -27,7 +27,7 @@ export default function DrawerNavigation({ route }) {
     return (
         <Drawer.Navigator
             screenOptions={{
-                headerShown: true,
+                headerShown: false,
                 // drawerType: "slide",
                 drawerStyle: { width: "60%" }
             }}

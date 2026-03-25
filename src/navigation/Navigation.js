@@ -24,13 +24,13 @@ export default function Navigation() {
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 
                 {!userInfo ? (
-                    // Show login if not authenticated
+                    
                     <Stack.Screen
                         name="Login"
                         component={LoginScreen}
                     />
                 ) : (
-                    // Show main app if authenticated
+                    
                     <>
                         <Stack.Screen
                             name="Main"
