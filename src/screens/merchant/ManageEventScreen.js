@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { 
-  StyleSheet, 
+import {
+  StyleSheet,
   Text,
-  Alert, 
-  View, 
-  FlatList, 
-  TouchableOpacity, 
+  Alert,
+  View,
+  FlatList,
+  TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  Modal,
   StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,7 +28,7 @@ const BgDecor = () => (
   </>
 );
 
-export default function ManageEventScreen({navigation}) {
+export default function ManageEventScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -75,25 +76,17 @@ export default function ManageEventScreen({navigation}) {
     }
   };
 
-    const { logout } = useContext(AuthContext);
-  
+  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+  const { logout } = useContext(AuthContext);
+
 
   const handleLogout = () => {
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          { text: 'Cancel', onPress: () => {} },
-          {
-            text: 'Logout',
-            onPress: () => {
-              logout();
-            },
-            style: 'destructive'
-          }
-        ]
-      )
-    }
+  setLogoutModalVisible(true);
+};
+const confirmLogout = () => {
+  setLogoutModalVisible(false);
+  logout();
+};
 
   const renderEvent = ({ item }) => {
     // Defaulting to cyan/green accents from the reference design
@@ -114,7 +107,7 @@ export default function ManageEventScreen({navigation}) {
         <Text style={styles.cardTitle}>{item.event_name}</Text>
         <Text style={styles.cardVenue}>{item.description}</Text>
         <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date}</Text>
-        
+
         {/* Footer line mimicking reference */}
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
@@ -169,7 +162,7 @@ export default function ManageEventScreen({navigation}) {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
       <BgDecor />
-      
+
       <SafeAreaView style={styles.safeArea}>
         {/* Header matching reference */}
         <View style={styles.header}>
@@ -202,14 +195,14 @@ export default function ManageEventScreen({navigation}) {
 }
 
 const styles = StyleSheet.create({
-  root: { 
-    flex: 1, 
-    backgroundColor: '#050A14' 
+  root: {
+    flex: 1,
+    backgroundColor: '#050A14'
   },
-  safeArea: { 
-    flex: 1 
+  safeArea: {
+    flex: 1
   },
-  
+
   // Background Decorations
   bgOrb1: {
     position: 'absolute', width: 400, height: 400, borderRadius: 200,
@@ -244,45 +237,45 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   eventCard: {
-    backgroundColor: '#0B1623', 
-    borderRadius: 20, 
+    backgroundColor: '#0B1623',
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 16, 
+    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25, shadowRadius: 16, elevation: 10,
   },
-  cardTopRow: { 
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', 
-    padding: 16, paddingBottom: 10 
+  cardTopRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 16, paddingBottom: 10
   },
-  statusPill: { 
-    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, 
-    paddingHorizontal: 10, paddingVertical: 4 
+  statusPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4
   },
-  statusDot: { 
-    width: 6, height: 6, borderRadius: 3 
+  statusDot: {
+    width: 6, height: 6, borderRadius: 3
   },
-  statusText: { 
+  statusText: {
     fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase'
   },
-  cardTitle: { 
-    color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16, 
-    marginBottom: 4, letterSpacing: -0.3 
+  cardTitle: {
+    color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16,
+    marginBottom: 4, letterSpacing: -0.3
   },
-  cardVenue: { 
-    color: '#4A8AAF', fontSize: 12, fontWeight: '500', paddingHorizontal: 16, 
-    marginBottom: 3 
+  cardVenue: {
+    color: '#4A8AAF', fontSize: 12, fontWeight: '500', paddingHorizontal: 16,
+    marginBottom: 3
   },
-  cardSchedule: { 
-    fontSize: 12, fontWeight: '700', paddingHorizontal: 16, marginBottom: 14, 
-    letterSpacing: 0.3 
+  cardSchedule: {
+    fontSize: 12, fontWeight: '700', paddingHorizontal: 16, marginBottom: 14,
+    letterSpacing: 0.3
   },
-  cardFooter: { 
-    borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 4 
+  cardFooter: {
+    borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 4
   },
-  cardFooterText: { 
-    fontSize: 12, fontWeight: '800', letterSpacing: 1.5 
+  cardFooterText: {
+    fontSize: 12, fontWeight: '800', letterSpacing: 1.5
   },
 
   // States (Loading, Error, Empty)
@@ -314,11 +307,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   retryBtn: {
-    borderRadius: 20, 
-    borderWidth: 1, 
+    borderRadius: 20,
+    borderWidth: 1,
     borderColor: '#132035',
-    paddingHorizontal: 24, 
-    paddingVertical: 10, 
+    paddingHorizontal: 24,
+    paddingVertical: 10,
     backgroundColor: '#0B1623',
   },
   retryText: {

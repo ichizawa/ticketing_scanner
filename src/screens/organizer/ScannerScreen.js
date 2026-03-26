@@ -4,6 +4,7 @@ import {
 } from 'react-native'
 import React, { useEffect, useRef, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
 const { width, height } = Dimensions.get('window')
 const SCANNER_SIZE = width * 0.72
@@ -39,6 +40,15 @@ const MOCK_USED = {
 }
 
 export default function ScannerScreen({ navigation }) {
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+
+  useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission, requestPermission]);
+
   const [scanResult, setScanResult] = useState(null)
   const [resultData, setResultData] = useState(null)
   const [isScanning, setIsScanning] = useState(true)
@@ -140,22 +150,36 @@ export default function ScannerScreen({ navigation }) {
 
   const statusConfig = scanResult ? getStatusConfig(scanResult) : null
 
+  // Early returns if permissions or device aren't ready yet
+  if (!hasPermission) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#3D6080' }}>Waiting for camera permission...</Text>
+      </View>
+    );
+  }
+
+  if (device == null) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#FF4D6A' }}>No camera device found.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
 
-      {/* Background orbs */}
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
 
-      {/* Subtle grid */}
       {[...Array(6)].map((_, i) => (
         <View key={i} style={[styles.gridLine, { top: (height / 6) * i }]} />
       ))}
 
       <SafeAreaView style={styles.safeArea}>
 
-        {/* ── Header ── */}
         <Animated.View style={[styles.header, { opacity: headerFade }]}>
           <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
             <Text style={styles.backArrow}>←</Text>
@@ -170,14 +194,13 @@ export default function ScannerScreen({ navigation }) {
               <Text style={styles.liveText}>LIVE</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.menuBtn}>
+          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
             <View style={styles.menuLine} />
             <View style={[styles.menuLine, { width: 14 }]} />
             <View style={styles.menuLine} />
           </TouchableOpacity>
         </Animated.View>
 
-        {/* ── Stats Bar ── */}
         <Animated.View style={[
           styles.statsBar,
           { transform: [{ translateY: statsSlide }], opacity: headerFade }
@@ -198,62 +221,37 @@ export default function ScannerScreen({ navigation }) {
           ))}
         </Animated.View>
 
-        {/* ── Scanner Viewport ── */}
         <View style={styles.scannerArea}>
           <Text style={styles.scanPrompt}>
             {isScanning ? 'Point camera at ticket QR code' : 'Processing...'}
           </Text>
 
-          <Animated.View style={[styles.scannerFrame, { transform: [{ scale: pulseAnim }] }]}>
-            {/* Corner brackets */}
+          <View style={styles.scannerFrame}>
+            <Camera
+              style={StyleSheet.absoluteFill}
+              device={device}
+              isActive={isScanning}
+              onFrameProcessor={(frame) => {
+                // will add QR detection later
+              }}
+            />
+
+            <Animated.View style={[styles.scanLine, { transform: [{ translateY: scanLineY }] }]}>
+              <View style={styles.scanLineBar} />
+              <View style={styles.scanLineGlow} />
+            </Animated.View>
             <Animated.View style={[styles.corner, styles.cornerTL, { opacity: glowOpacity }]} />
             <Animated.View style={[styles.corner, styles.cornerTR, { opacity: glowOpacity }]} />
             <Animated.View style={[styles.corner, styles.cornerBL, { opacity: glowOpacity }]} />
             <Animated.View style={[styles.corner, styles.cornerBR, { opacity: glowOpacity }]} />
+          </View>
 
-            {/* Corner accent dots */}
-            <View style={[styles.cornerDot, { top: 14, left: 14 }]} />
-            <View style={[styles.cornerDot, { top: 14, right: 14 }]} />
-            <View style={[styles.cornerDot, { bottom: 14, left: 14 }]} />
-            <View style={[styles.cornerDot, { bottom: 14, right: 14 }]} />
-
-            {/* Animated scan line */}
-            {isScanning && (
-              <Animated.View style={[styles.scanLine, { transform: [{ translateY: scanLineY }] }]}>
-                <View style={styles.scanLineBar} />
-                <View style={styles.scanLineGlow} />
-              </Animated.View>
-            )}
-
-            {/* Center reticle */}
-            <View style={styles.reticleOuter}>
-              <View style={styles.reticleInner} />
-            </View>
-
-            {/* Decorative QR ghost */}
-            <View style={styles.qrGhost}>
-              {[...Array(3)].map((_, row) => (
-                <View key={row} style={styles.qrRow}>
-                  {[...Array(3)].map((_, col) => (
-                    <View key={col} style={[
-                      styles.qrCell,
-                      (row === 0 && col === 0) || (row === 0 && col === 2) || (row === 2 && col === 0)
-                        ? styles.qrCellSolid : styles.qrCellOutline
-                    ]} />
-                  ))}
-                </View>
-              ))}
-            </View>
-          </Animated.View>
-
-          {/* Status label below frame */}
           <View style={styles.scanStatusRow}>
             <View style={styles.scanStatusDot} />
             <Text style={styles.scanStatusText}>AUTO-DETECT ENABLED</Text>
           </View>
         </View>
 
-        {/* ── Controls ── */}
         <View style={styles.controls}>
           <TouchableOpacity style={styles.ctrlBtn} onPress={() => showResult(MOCK_USED)}>
             <Text style={styles.ctrlIcon}>⏱</Text>
@@ -275,7 +273,6 @@ export default function ScannerScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Manual entry */}
         <View style={styles.manualRow}>
           <TouchableOpacity style={styles.manualBtn}>
             <Text style={styles.manualBtnText}>Enter Ticket ID Manually</Text>
@@ -284,7 +281,6 @@ export default function ScannerScreen({ navigation }) {
 
       </SafeAreaView>
 
-      {/* ── Result Overlay ── */}
       {scanResult && (
         <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
           <TouchableOpacity style={styles.overlayBg} onPress={dismissResult} activeOpacity={1} />
@@ -294,7 +290,6 @@ export default function ScannerScreen({ navigation }) {
             { transform: [{ translateY: resultSlide }], opacity: resultOpacity },
             { borderTopColor: statusConfig?.borderColor + '60' },
           ]}>
-            {/* Status strip */}
             <View style={[styles.resultHeader, { backgroundColor: statusConfig?.bg }]}>
               <View style={[styles.resultIconRing, { borderColor: statusConfig?.color }]}>
                 <Text style={[styles.resultIconText, { color: statusConfig?.color }]}>
@@ -312,7 +307,6 @@ export default function ScannerScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Body */}
             <View style={styles.resultBody}>
               <Text style={styles.attendeeName}>{resultData?.name}</Text>
               <Text style={styles.eventName}>{resultData?.event}</Text>
@@ -337,12 +331,10 @@ export default function ScannerScreen({ navigation }) {
                 ))}
               </View>
 
-              {/* Perforated tear line */}
               <View style={styles.tearLine}>
                 {[...Array(14)].map((_, i) => <View key={i} style={styles.tearDot} />)}
               </View>
 
-              {/* CTA */}
               <TouchableOpacity
                 style={[styles.ctaBtn, { backgroundColor: statusConfig?.color }]}
                 onPress={dismissResult}
@@ -412,6 +404,7 @@ const styles = StyleSheet.create({
   scannerFrame: {
     width: SCANNER_SIZE, height: SCANNER_SIZE,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    position: 'relative', 
   },
 
   corner: { position: 'absolute', width: 28, height: 28 },
