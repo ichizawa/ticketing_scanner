@@ -3,6 +3,7 @@ import {
   Dimensions, StatusBar, ScrollView, Animated, Alert
 } from 'react-native'
 import React, { useEffect, useRef, useState, useContext } from 'react'
+import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
 

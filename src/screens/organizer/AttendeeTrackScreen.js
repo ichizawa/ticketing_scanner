@@ -3,6 +3,7 @@ import {
   Dimensions, StatusBar, ScrollView, Animated, Alert
 } from 'react-native'
 import React, { useRef, useEffect, useState, useContext } from 'react'
+import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
 
@@ -110,6 +111,10 @@ function EventSelectionView({ onSelect, navigation, handleLogout }) {
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
             <Text style={styles.headerTitle}>
               <Text style={styles.headerMedia}>MediaOne</Text>
               <Text style={styles.headerTix}>Tix</Text>
@@ -253,6 +258,10 @@ function AttendanceReportView({ event, onBack, handleLogout }) {
               <Text style={styles.headerMedia}>MediaOne</Text>
               <Text style={styles.headerTix}>Tix</Text>
             </Text>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
           </View>
 
           <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
@@ -349,6 +358,7 @@ function AttendanceReportView({ event, onBack, handleLogout }) {
 }
 
 export default function AttendeeTrackScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
   const { logout } = useContext(AuthContext);
   const [selectedEvent, setSelectedEvent] = useState(null)
 
