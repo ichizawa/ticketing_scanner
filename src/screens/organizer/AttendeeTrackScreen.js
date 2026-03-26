@@ -359,7 +359,6 @@ function AttendanceReportView({ event, onBack, handleLogout }) {
 
 export default function AttendeeTrackScreen({ navigation }) {
   const { logout } = useContext(AuthContext);
-  const { logout } = useContext(AuthContext);
   const [selectedEvent, setSelectedEvent] = useState(null)
 
   const handleLogout = () => {
