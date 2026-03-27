@@ -23,10 +23,18 @@ const formatTime = (time) => {
 };
 
 const getImageUrl = (path) => {
-  if (!path) return null;
+  if (!path || path === 'null') return null;
   if (path.startsWith('http')) return path;
+
+  // Ensure the base URL includes /storage if your API doesn't provide it
+  const baseUrl = IMAGE_BASE_URL.endsWith('/') 
+    ? IMAGE_BASE_URL.slice(0, -1) 
+    : IMAGE_BASE_URL;
+
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `${IMAGE_BASE_URL}/${cleanPath}`;
+  
+  // If your database path doesn't include 'storage/', add it here:
+  return `${baseUrl}/storage/${cleanPath}`;
 };
 
 const getStatusColor = (status) => {

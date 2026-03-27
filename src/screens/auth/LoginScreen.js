@@ -2,6 +2,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Dimensions, Animat
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window')
 
@@ -144,7 +145,11 @@ export default function LoginScreen({ navigation }) {
                   onChangeText={handlePasswordChange}
                 />
                 <TouchableOpacity onPress={handleShowPassword} style={styles.eyeBtn}>
-                  <Text style={styles.eyeIcon}>{showPassword ? '○' : '◉'}</Text>
+                  {showPassword ? (
+                    <MaterialCommunityIcons name="eye" color="#00C2FF" size={24} />
+                  ) : (
+                    <Ionicons name="eye-off" color="#00C2FF" size={24} />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
