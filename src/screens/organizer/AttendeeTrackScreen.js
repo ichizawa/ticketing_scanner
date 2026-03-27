@@ -1,14 +1,12 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  Dimensions, StatusBar, ScrollView, Animated
+  Dimensions, StatusBar, ScrollView, Animated, Alert
 } from 'react-native'
 import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
-import { Alert } from 'react-native'
 
 const { width } = Dimensions.get('window')
-
 
 const EVENTS = [
   {
@@ -85,8 +83,7 @@ const BgOrbs = () => (
   </>
 )
 
-
-function EventSelectionView({ onSelect, handleLogout, navigation }) {
+function EventSelectionView({ onSelect, navigation, handleLogout }) {
   const pulseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -104,19 +101,21 @@ function EventSelectionView({ onSelect, handleLogout, navigation }) {
       <BgOrbs />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
+        {/* HEADER: Updated to reference style */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
             <View style={styles.menuLine} />
             <View style={[styles.menuLine, { width: 14 }]} />
             <View style={styles.menuLine} />
           </TouchableOpacity>
+
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
               <Text style={styles.headerMedia}>MediaOne</Text>
               <Text style={styles.headerTix}>Tix</Text>
             </Text>
           </View>
+
           <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
             <View style={styles.profileAvatar} />
           </TouchableOpacity>
@@ -217,8 +216,7 @@ function EventSelectionView({ onSelect, handleLogout, navigation }) {
   )
 }
 
-
-function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
+function AttendanceReportView({ event, onBack, handleLogout }) {
   const progressAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -244,17 +242,23 @@ function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
       <BgOrbs />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
+        {/* HEADER: Updated to reference style */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Text style={[styles.backArrow, { color: event.accentColor }]}>←</Text>
+            <Text style={styles.backArrow}>‹</Text>
           </TouchableOpacity>
+
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
               <Text style={styles.headerMedia}>MediaOne</Text>
               <Text style={styles.headerTix}>Tix</Text>
             </Text>
+            <Text style={styles.headerTitle}>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
+            </Text>
           </View>
+
           <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
             <View style={styles.profileAvatar} />
           </TouchableOpacity>
@@ -348,7 +352,6 @@ function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
   )
 }
 
-
 export default function AttendeeTrackScreen({ navigation }) {
   const { logout } = useContext(AuthContext);
   const [selectedEvent, setSelectedEvent] = useState(null)
@@ -358,31 +361,34 @@ export default function AttendeeTrackScreen({ navigation }) {
       'Logout',
       'Are you sure you want to logout?',
       [
-        { text: 'Cancel', onPress: () => {} },
+        { text: 'Cancel', onPress: () => { } },
         {
           text: 'Logout',
-          onPress: () => {
-            logout();
-          },
+          onPress: () => logout(),
           style: 'destructive'
         }
       ]
-    )
-  }
+    );
+  };
 
   if (!selectedEvent) {
-    return <EventSelectionView onSelect={setSelectedEvent} handleLogout={handleLogout} navigation={navigation} />
+    return (
+      <EventSelectionView 
+        onSelect={setSelectedEvent} 
+        navigation={navigation}
+        handleLogout={handleLogout}
+      />
+    )
   }
+  
   return (
     <AttendanceReportView
       event={selectedEvent}
       onBack={() => setSelectedEvent(null)}
       handleLogout={handleLogout}
-      navigation={navigation}
     />
   )
 }
-
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#050A14' },
@@ -399,20 +405,27 @@ const styles = StyleSheet.create({
   safeArea:      { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 10 },
 
+  // Updated Header Styles to match Reference
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 15,
+    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { fontSize: 24 },
-  headerTitle: { fontSize: 20 },
-  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
-  headerTix: { color: '#00C2FF', fontWeight: '800' },
-  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
-  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
-  dummySpace:       { width: 40 },
+  menuBtn: { width: 40, height: 40, alignItems: 'flex-end', justifyContent: 'center' },
+  menuLine: {
+    width: 20, height: 2, backgroundColor: '#4A8AAF', marginVertical: 2, borderRadius: 2
+  },
+  profileBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  profileAvatar: {
+    width: 26, height: 26, backgroundColor: '#4A8AAF',
+    borderRadius: 13, opacity: 0.5
+  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 3 },
+  headerMedia: { color: '#00C2FF' },
+  headerTix: { color: '#FFFFFF' },
+
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  backArrow: { fontSize: 26, color: '#4A8AAF', marginLeft: 2 },
 
   pageHeadRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   pageHeadTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', letterSpacing: 0.5, marginBottom: 4 },
