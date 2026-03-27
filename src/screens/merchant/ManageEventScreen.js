@@ -79,34 +79,41 @@ export default function ManageEventScreen({ navigation }) {
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const { logout } = useContext(AuthContext);
 
-
   const handleLogout = () => {
-  setLogoutModalVisible(true);
-};
-const confirmLogout = () => {
-  setLogoutModalVisible(false);
-  logout();
-};
+    setLogoutModalVisible(true);
+  };
+  
+  const confirmLogout = () => {
+    setLogoutModalVisible(false);
+    logout();
+  };
 
   const renderEvent = ({ item }) => {
     // Defaulting to cyan/green accents from the reference design
     const accentColor = '#00C2FF';
     const statusColor = '#00E5A0';
+    
+    // DB status is tinyint, so 1 is usually Active
+    const statusLabel = item.status === 1 ? 'ACTIVE' : 'INACTIVE';
 
     return (
-      <TouchableOpacity style={[styles.eventCard, { borderColor: '#132035' }]} activeOpacity={0.8}>
+      <TouchableOpacity 
+        style={[styles.eventCard, { borderColor: '#132035' }]} 
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('EventDetails', { event: item })}
+      >
         {/* Top row with status pill */}
         <View style={styles.cardTopRow}>
           <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
+            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
           </View>
         </View>
 
         {/* Info */}
         <Text style={styles.cardTitle}>{item.event_name}</Text>
-        <Text style={styles.cardVenue}>{item.description}</Text>
-        <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date}</Text>
+        <Text style={styles.cardVenue}>{item.event_venue}</Text>
+        <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {item.event_time}</Text>
 
         {/* Footer line mimicking reference */}
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
@@ -202,8 +209,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1
   },
-
-  // Background Decorations
   bgOrb1: {
     position: 'absolute', width: 400, height: 400, borderRadius: 200,
     backgroundColor: '#00C2FF', top: -150, left: -200, opacity: 0.03,
@@ -216,8 +221,6 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, height: 1,
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
-
-  // Header
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16,
@@ -230,8 +233,6 @@ const styles = StyleSheet.create({
   menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
   profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
   profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
-
-  // List & Cards
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
@@ -277,8 +278,6 @@ const styles = StyleSheet.create({
   cardFooterText: {
     fontSize: 12, fontWeight: '800', letterSpacing: 1.5
   },
-
-  // States (Loading, Error, Empty)
   centerContainer: {
     flex: 1,
     justifyContent: 'center',

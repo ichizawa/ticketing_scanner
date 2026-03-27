@@ -5,16 +5,17 @@ import LoginScreen from "../screens/auth/LoginScreen";
 import DrawerNavigation from "./DrawerNavigation";
 import ScannerScreen from '../screens/organizer/ScannerScreen';
 import { AuthContext } from '../context/AuthContext';
+import EventDetailsScreen from '../screens/merchant/EventDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function Navigation() {
     const { userInfo } = useContext(AuthContext);
-    
+
     // Check if user is a merchant (handle different API response structures)
     const userRole = userInfo?.role || userInfo?.user?.role || userInfo?.type;
     const isMerchant = userRole === 'merchant' || userRole === 'admin';
-    
+
     console.log('User Info:', userInfo);
     console.log('User Role:', userRole);
     console.log('Is Merchant:', isMerchant);
@@ -22,15 +23,15 @@ export default function Navigation() {
     return (
         <NavigationContainer>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
-                
+
                 {!userInfo ? (
-                    
+
                     <Stack.Screen
                         name="Login"
                         component={LoginScreen}
                     />
                 ) : (
-                    
+
                     <>
                         <Stack.Screen
                             name="Main"
@@ -44,6 +45,7 @@ export default function Navigation() {
                                 component={ScannerScreen}
                             />
                         )}
+                        <Stack.Screen name="EventDetails" component={EventDetailsScreen} />
                     </>
                 )}
             </Stack.Navigator>
