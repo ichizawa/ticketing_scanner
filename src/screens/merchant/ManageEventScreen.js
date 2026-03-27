@@ -8,16 +8,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  Modal,
   StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../config';
 import { AuthContext } from '../../context/AuthContext';
 
+// Import the Header component
+import Header from '../../components/Header'; 
+
 const { width } = Dimensions.get('window');
 
-// Background decoration component from reference design
+// Background decoration component
 const BgDecor = () => (
   <>
     <View style={styles.bgOrb1} />
@@ -76,24 +78,9 @@ export default function ManageEventScreen({ navigation }) {
     }
   };
 
-  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
-  const { logout } = useContext(AuthContext);
-
-  const handleLogout = () => {
-    setLogoutModalVisible(true);
-  };
-  
-  const confirmLogout = () => {
-    setLogoutModalVisible(false);
-    logout();
-  };
-
   const renderEvent = ({ item }) => {
-    // Defaulting to cyan/green accents from the reference design
     const accentColor = '#00C2FF';
     const statusColor = '#00E5A0';
-    
-    // DB status is tinyint, so 1 is usually Active
     const statusLabel = item.status === 1 ? 'ACTIVE' : 'INACTIVE';
 
     return (
@@ -102,7 +89,6 @@ export default function ManageEventScreen({ navigation }) {
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
-        {/* Top row with status pill */}
         <View style={styles.cardTopRow}>
           <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
@@ -110,12 +96,10 @@ export default function ManageEventScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Info */}
         <Text style={styles.cardTitle}>{item.event_name}</Text>
         <Text style={styles.cardVenue}>{item.event_venue}</Text>
         <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {item.event_time}</Text>
 
-        {/* Footer line mimicking reference */}
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
             VIEW DETAILS  ›
@@ -125,15 +109,21 @@ export default function ManageEventScreen({ navigation }) {
     );
   };
 
+  // --- RETURN STATES ---
+
   if (loading) {
     return (
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#00C2FF" />
-          <Text style={styles.loadingText}>Loading events...</Text>
-        </View>
+        <SafeAreaView style={styles.safeArea}>
+          {/* Header Added Here */}
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#00C2FF" />
+            <Text style={styles.loadingText}>Loading events...</Text>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -143,12 +133,16 @@ export default function ManageEventScreen({ navigation }) {
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>Error: {error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchEvents}>
-            <Text style={styles.retryText}>RETRY</Text>
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView style={styles.safeArea}>
+           {/* Header Added Here */}
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchEvents}>
+              <Text style={styles.retryText}>RETRY</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -158,9 +152,13 @@ export default function ManageEventScreen({ navigation }) {
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
-        <View style={styles.centerContainer}>
-          <Text style={styles.noDataText}>No events found</Text>
-        </View>
+        <SafeAreaView style={styles.safeArea}>
+           {/* Header Added Here */}
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <Text style={styles.noDataText}>No events found</Text>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -171,23 +169,8 @@ export default function ManageEventScreen({ navigation }) {
       <BgDecor />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header matching reference */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>Manage</Text>
-              <Text style={styles.headerTix}>Events</Text>
-            </Text>
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+         {/* Main Header Added Here */}
+        <Header navigation={navigation} />
 
         <FlatList
           data={events}
@@ -221,21 +204,10 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, height: 1,
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16,
-  },
-  headerCenter: { alignItems: 'center' },
-  headerTitle: { fontSize: 20 },
-  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
-  headerTix: { color: '#00C2FF', fontWeight: '800' },
-  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
-  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    paddingTop: 10,
   },
   eventCard: {
     backgroundColor: '#0B1623',
