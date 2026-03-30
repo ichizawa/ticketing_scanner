@@ -172,12 +172,7 @@ export default function MerchantHomeScreen({ navigation }) {
                         <Text style={styles.eventTitle} numberOfLines={1}>{event.event_name}</Text>
                         
                         <View style={styles.progressHeader}>
-                          <Text style={styles.progressLabel}>{event.tickets_sold} / {event.event_total_tickets} Sold</Text>
-                          <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
-                        </View>
-                        
-                        <View style={styles.progressBarBg}>
-                          <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+                          <Text style={styles.progressLabel}>{event.tickets_sold} Ticket(s) Sold</Text>
                         </View>
                       </View>
                       <View style={styles.chevronBox}>
