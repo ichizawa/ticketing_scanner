@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
-  ActivityIndicator, 
+  ActivityIndicator,
   Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,12 +35,12 @@ export default function EventDetailsScreen({ route, navigation }) {
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
 
-  // Calculate ticket percentage for the progress bar
-  const ticketProgress = event.event_total_tickets > 0
-    ? (event.tickets_sold / event.event_total_tickets) * 100
-    : 0;
-
   const statusConfig = getStatusConfig(event.status);
+
+  // This is for Calculating the total, remaining, and sold tickets dynamically based on the fetched tickets
+  const dynamicTotal = tickets.reduce((sum, ticket) => sum + (parseInt(ticket.original_qty) || 0), 0);
+  const dynamicRemaining = tickets.reduce((sum, ticket) => sum + (parseInt(ticket.quantity) || 0), 0);
+  const dynamicSold = Math.max(0, dynamicTotal - dynamicRemaining);
 
   useEffect(() => {
     fetchEventTickets();
@@ -61,10 +61,8 @@ export default function EventDetailsScreen({ route, navigation }) {
 
       const json = await response.json();
       
-      // Handle your API wrapper (data, tickets, or raw array)
       const allTickets = json.data || json.tickets || json;
       
-      // Filter the list to ONLY show tickets for THIS specific event
       const filteredTickets = Array.isArray(allTickets) 
         ? allTickets.filter(ticket => ticket.event_id === event.id)
         : [];
@@ -81,7 +79,6 @@ export default function EventDetailsScreen({ route, navigation }) {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 
-      {/* Absolute Background Orbs */}
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
 
@@ -106,7 +103,7 @@ export default function EventDetailsScreen({ route, navigation }) {
               />
             ) : (
               <View style={styles.placeholderImage}>
-                <Text style={{ color: '#4A8AAF' }}>No Image Available</Text>
+                <Text style={{ color: '#4A8AAF', fontWeight: '600' }}>No Image Available</Text>
               </View>
             )}
             <View style={[styles.statusPill, statusConfig.pillStyle]}>
@@ -119,34 +116,68 @@ export default function EventDetailsScreen({ route, navigation }) {
           <View style={styles.contentContainer}>
             <Text style={styles.title}>{event.event_name}</Text>
 
-            {/* Info Card */}
+            {/* Info Card (Date & Venue) */}
             <View style={styles.infoCard}>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>DATE & TIME</Text>
-                <Text style={styles.infoValue}>{event.event_date} @ {event.event_time}</Text>
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconPlaceholder}>
+                  <Text style={styles.infoIconText}>📅</Text>
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={styles.infoLabel}>DATE & TIME</Text>
+                  <Text style={styles.infoValue}>{event.event_date} @ {event.event_time}</Text>
+                </View>
               </View>
 
               <View style={styles.divider} />
 
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>VENUE</Text>
-                <Text style={styles.infoValue}>{event.event_venue}</Text>
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconPlaceholder}>
+                  <Text style={styles.infoIconText}>📍</Text>
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={styles.infoLabel}>VENUE</Text>
+                  <Text style={styles.infoValue}>{event.event_venue}</Text>
+                </View>
               </View>
             </View>
 
-            {/* Ticket Progress Section */}
-            <View style={styles.ticketSection}>
-              <View style={styles.ticketHeader}>
-                <Text style={styles.sectionTitle}>Tickets Sold</Text>
-                <Text style={styles.ticketCount}>{event.tickets_sold || 0} / {event.event_total_tickets}</Text>
+            {/* About & Seat Plan Section */}
+            <Text style={styles.sectionTitle}>About Event</Text>
+            <Text style={styles.description}>{event.description}</Text>
+
+            {/* --- UPDATED STATS GRID --- */}
+            <Text style={styles.sectionTitle}>Ticket Sales</Text>
+            <View style={styles.statsCard}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>SOLD</Text>
+                {loadingTickets ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.statValue}>{dynamicSold}</Text>
+                )}
               </View>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${ticketProgress}%` }]} />
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>TOTAL</Text>
+                {loadingTickets ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.statValue}>{dynamicTotal}</Text>
+                )}
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>REMAINING</Text>
+                {loadingTickets ? (
+                  <ActivityIndicator size="small" color="#00C2FF" />
+                ) : (
+                  <Text style={[styles.statValue, { color: '#00C2FF' }]}>{dynamicRemaining}</Text>
+                )}
               </View>
             </View>
 
-            {/* --- NEW TICKET CATEGORIES SECTION --- */}
-            <Text style={styles.sectionTitle}>Ticket Categories</Text>
+            {/* Ticket Categories Section */}
+            <Text style={styles.sectionTitle}>Categories</Text>
             
             {loadingTickets ? (
               <View style={styles.loadingBox}>
@@ -154,15 +185,14 @@ export default function EventDetailsScreen({ route, navigation }) {
                 <Text style={styles.loadingText}>Loading tickets...</Text>
               </View>
             ) : tickets.length > 0 ? (
-              tickets.map((ticket) => (
-                <View 
-                  key={ticket.id.toString()} 
-                  style={[styles.ticketTypeCard, { borderLeftColor: ticket.color || '#00C2FF' }]}
-                >
-                  <View style={styles.ticketTypeRow}>
-                    <View>
+              <View style={styles.ticketList}>
+                {tickets.map((ticket) => (
+                  <View 
+                    key={ticket.id.toString()} 
+                    style={[styles.ticketTypeCard, { borderLeftColor: ticket.color || '#00C2FF' }]}
+                  >
+                    <View style={styles.ticketTypeLeft}>
                       <Text style={styles.ticketTypeName}>{ticket.name}</Text>
-                      {/* Badge using the hex color from your database */}
                       <View style={[styles.typeBadge, { backgroundColor: (ticket.color || '#00C2FF') + '20' }]}>
                         <Text style={[styles.typeBadgeText, { color: ticket.color || '#00C2FF' }]}>
                           {ticket.type}
@@ -171,25 +201,23 @@ export default function EventDetailsScreen({ route, navigation }) {
                     </View>
                     
                     <View style={styles.ticketTypeRight}>
-                      <Text style={styles.ticketPrice}>PHP {ticket.price}</Text>
+                      <Text style={styles.ticketPrice}>
+                        <Text style={styles.currencyText}>PHP </Text>
+                        {ticket.price}
+                      </Text>
                       <Text style={styles.ticketQty}>{ticket.quantity} / {ticket.original_qty} left</Text>
                     </View>
                   </View>
-                </View>
-              ))
+                ))}
+              </View>
             ) : (
               <Text style={styles.description}>No ticket categories found for this event.</Text>
             )}
-            {/* -------------------------------------- */}
 
-            <Text style={styles.sectionTitle}>About Event</Text>
-            <Text style={styles.description}>{event.description}</Text>
-
-            {/* Seat Plan Section */}
             {event.seat_plan_url && (
               <>
                 <Text style={styles.sectionTitle}>Seat Plan</Text>
-                <TouchableOpacity activeOpacity={0.9}>
+                <TouchableOpacity activeOpacity={0.9} style={styles.seatPlanContainer}>
                   <Image
                     source={{ uri: event.seat_plan_url }}
                     style={styles.seatPlanImage}
@@ -209,140 +237,110 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#050A14' },
   safeArea: { flex: 1 },
   bgOrb1: {
-    position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: '#00C2FF', top: -50, left: -100, opacity: 0.05,
+    position: 'absolute', width: 350, height: 350, borderRadius: 175,
+    backgroundColor: '#00C2FF', top: -100, left: -150, opacity: 0.06,
   },
   bgOrb2: {
-    position: 'absolute', width: 250, height: 250, borderRadius: 125,
-    backgroundColor: '#FF4D6A', top: 200, right: -100, opacity: 0.04,
+    position: 'absolute', width: 300, height: 300, borderRadius: 150,
+    backgroundColor: '#FF4D6A', top: 250, right: -150, opacity: 0.05,
   },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10,
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   backBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center'
+    backgroundColor: 'rgba(19, 32, 53, 0.8)', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#1A2A44'
   },
-  backBtnText: { color: '#FFFFFF', fontSize: 20, fontWeight: '300' },
-  headerTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', letterSpacing: 0.5 },
+  backBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: '400' },
+  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
 
-  scrollContent: { paddingBottom: 60 },
+  scrollContent: { paddingBottom: 80 },
 
   imageContainer: {
     marginHorizontal: 20, marginTop: 10,
-    borderRadius: 24, overflow: 'hidden',
-    elevation: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10,
+    borderRadius: 28, overflow: 'hidden',
+    borderWidth: 1, borderColor: '#1A2A44',
   },
-  heroImage: { width: '100%', height: 240 },
-  placeholderImage: { width: '100%', height: 240, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
+  heroImage: { width: '100%', height: 260 },
+  placeholderImage: { width: '100%', height: 260, backgroundColor: '#0D1526', justifyContent: 'center', alignItems: 'center' },
 
   statusPill: {
-    position: 'absolute', top: 15, right: 15,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+    position: 'absolute', top: 16, right: 16,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4,
   },
-  statusText: {
-    fontSize: 10, fontWeight: '900',
-  },
+  statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
 
   // --- DYNAMIC STATUS STYLES ---
-  upcomingPill: { backgroundColor: 'rgba(251, 255, 19, 0.9)' },
+  upcomingPill: { backgroundColor: 'rgba(251, 255, 19, 0.95)' },
   upcomingText: { color: '#000000' },
-
-  activePill: { backgroundColor: 'rgba(14, 121, 0, 0.9)' },
+  activePill: { backgroundColor: 'rgba(14, 121, 0, 0.95)' },
   activeText: { color: '#FFFFFF' },
-
-  ongoingPill: { backgroundColor: 'rgba(0, 51, 203, 0.9)' },
+  ongoingPill: { backgroundColor: 'rgba(0, 51, 203, 0.95)' },
   ongoingText: { color: '#FFFFFF' },
-
-  completedPill: { backgroundColor: 'rgba(75, 75, 75, 0.9)' },
+  completedPill: { backgroundColor: 'rgba(75, 75, 75, 0.95)' },
   completedText: { color: '#FFFFFF' },
-
-  cancelPill: { backgroundColor: 'rgba(255, 77, 106, 0.9)' },
+  cancelPill: { backgroundColor: 'rgba(255, 77, 106, 0.95)' },
   cancelText: { color: '#FFFFFF' },
 
-  contentContainer: { paddingHorizontal: 24, marginTop: 25 },
-  title: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', marginBottom: 20 },
+  contentContainer: { paddingHorizontal: 20, marginTop: 24 },
+  title: { color: '#FFFFFF', fontSize: 32, fontWeight: '900', marginBottom: 24, lineHeight: 38 },
 
+  // --- INFO CARD ---
   infoCard: {
-    backgroundColor: '#0D1526', borderRadius: 20, padding: 20,
-    borderWidth: 1, borderColor: '#1A2A44', marginBottom: 25,
+    backgroundColor: 'rgba(13, 21, 38, 0.7)', borderRadius: 24, padding: 20,
+    borderWidth: 1, borderColor: '#1A2A44', marginBottom: 30,
   },
-  infoItem: { marginVertical: 4 },
-  infoLabel: { color: '#4A8AAF', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
-  infoValue: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  divider: { height: 1, backgroundColor: '#1A2A44', marginVertical: 12 },
-
-  ticketSection: { marginBottom: 25 },
-  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
-  ticketCount: { color: '#00C2FF', fontWeight: '700', fontSize: 14 },
-  progressBarBg: { height: 8, backgroundColor: '#132035', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#00C2FF', borderRadius: 4 },
-
-  sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginBottom: 12, marginTop: 10 },
-  description: { color: '#A0B3C6', fontSize: 15, lineHeight: 24, marginBottom: 25 },
-
-  seatPlanImage: {
-    width: '100%', height: 200, borderRadius: 16,
-    backgroundColor: '#132035', marginTop: 5, borderWidth: 1, borderColor: '#1A2A44'
+  infoRow: { flexDirection: 'row', alignItems: 'center' },
+  infoIconPlaceholder: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16,
   },
+  infoIconText: { fontSize: 16 },
+  infoTextContainer: { flex: 1 },
+  infoLabel: { color: '#4A8AAF', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 4 },
+  infoValue: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', lineHeight: 22 },
+  divider: { height: 1, backgroundColor: '#1A2A44', marginVertical: 16, marginLeft: 56 },
 
-  // --- NEW STYLES FOR TICKET CATEGORIES ---
-  loadingBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    opacity: 0.7,
+  // --- STATS GRID (Replaced Progress Bar) ---
+  statsCard: {
+    flexDirection: 'row', backgroundColor: 'rgba(13, 21, 38, 0.7)',
+    borderRadius: 20, paddingVertical: 20, paddingHorizontal: 16,
+    borderWidth: 1, borderColor: '#1A2A44', marginBottom: 30,
+    justifyContent: 'space-between', alignItems: 'center'
   },
-  loadingText: {
-    color: '#00C2FF',
-    marginLeft: 10,
-    fontSize: 14,
-  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statLabel: { color: '#4A8AAF', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 6 },
+  statValue: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
+  statDivider: { width: 1, height: 40, backgroundColor: '#1A2A44' },
+
+  sectionTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginBottom: 16, letterSpacing: 0.5 },
+  description: { color: '#A0B3C6', fontSize: 15, lineHeight: 26, marginBottom: 30, fontWeight: '400' },
+
+  // --- TICKET CATEGORIES ---
+  ticketList: { marginBottom: 15 },
+  loadingBox: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, opacity: 0.8 },
+  loadingText: { color: '#00C2FF', marginLeft: 12, fontSize: 15, fontWeight: '600' },
   ticketTypeCard: {
-    backgroundColor: '#0B1623',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1A2A44',
-    borderLeftWidth: 4, 
+    backgroundColor: 'rgba(11, 22, 35, 0.8)', borderRadius: 20, padding: 20,
+    marginBottom: 16, borderWidth: 1, borderColor: '#1A2A44',
+    borderLeftWidth: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
   },
-  ticketTypeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  ticketTypeLeft: { flex: 1, paddingRight: 10 },
+  ticketTypeName: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginBottom: 10 },
+  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  typeBadgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
+  ticketTypeRight: { alignItems: 'flex-end', justifyContent: 'center' },
+  currencyText: { fontSize: 14, fontWeight: '600', color: '#4A8AAF' },
+  ticketPrice: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', marginBottom: 6 },
+  ticketQty: { color: '#4A8AAF', fontSize: 13, fontWeight: '700' },
+
+  // --- SEAT PLAN ---
+  seatPlanContainer: {
+    borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#1A2A44',
+    backgroundColor: '#0D1526', padding: 10, marginBottom: 20
   },
-  ticketTypeName: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  typeBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  ticketTypeRight: {
-    alignItems: 'flex-end',
-  },
-  ticketPrice: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 4,
-  },
-  ticketQty: {
-    color: '#4A8AAF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  seatPlanImage: { width: '100%', height: 220, borderRadius: 12 },
 });

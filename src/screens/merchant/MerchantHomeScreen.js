@@ -8,7 +8,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AuthContext } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
 
-// Import your new Header Component
 import Header from '../../components/Header'; 
 
 const { width } = Dimensions.get('window');
@@ -27,30 +26,48 @@ export default function MerchantHomeScreen({ navigation }) {
 
   const fetchMerchantData = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/merchant/events`, {
-        method: 'GET',
-        headers: {
-          "Authorization": `Bearer ${userInfo?.token}`,
-          "Accept": "application/json",
-        }
-      });
+      const headers = {
+        "Authorization": `Bearer ${userInfo?.token}`,
+        "Accept": "application/json",
+      };
 
-      const result = await response.json();
+      const [eventsResponse, salesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/merchant/events`, { method: 'GET', headers }),
+        fetch(`${API_BASE_URL}/merchant/sales`, { method: 'GET', headers })
+      ]);
 
-      if (response.ok) {
-        const eventData = result.data || result.events || result;
+      if (!eventsResponse.ok) console.log("❌ Events API Error:", eventsResponse.status);
+      if (!salesResponse.ok) console.log("❌ Sales API Error:", salesResponse.status);
+
+      let sold = 0;
+      let active = 0;
+      let revenue = 0;
+
+      if (eventsResponse.ok) {
+        const eventsResult = await eventsResponse.json();
+        const eventData = eventsResult.data || eventsResult.events || eventsResult;
         const fetchedEvents = Array.isArray(eventData) ? eventData : [];
-        
         setEvents(fetchedEvents);
 
-        const revenue = fetchedEvents.reduce((acc, curr) => acc + (Number(curr.revenue) || 0), 0);
-        const sold = fetchedEvents.reduce((acc, curr) => acc + (Number(curr.tickets_sold) || 0), 0);
-        const active = fetchedEvents.filter(e => e.status === 1).length;
-
-        setStats({ totalRevenue: revenue, totalSold: sold, activeCount: active });
+        sold = fetchedEvents.reduce((acc, curr) => acc + (Number(curr.tickets_sold) || 0), 0);
+        active = fetchedEvents.filter(e => e.status === 1 || e.status === '1').length;
       } else {
-        Alert.alert("Data Error", result.message || "Could not retrieve your events.");
+        Alert.alert("Events Error", `Could not load events. Status: ${eventsResponse.status}`);
       }
+
+      if (salesResponse.ok) {
+        const salesResult = await salesResponse.json();
+        
+        revenue = Number(salesResult.total_sales) || 0;
+        
+      } else {
+        const errorText = await salesResponse.text();
+        console.warn(`⚠️ Sales Error - Status: ${salesResponse.status}`);
+        console.warn(`Backend says:`, errorText);
+      }
+
+      setStats({ totalRevenue: revenue, totalSold: sold, activeCount: active });
+
     } catch (error) {
       console.error("Fetch Error:", error);
       Alert.alert("Connection Error", "Check your internet connection and try again.");
@@ -72,7 +89,7 @@ export default function MerchantHomeScreen({ navigation }) {
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(value);
   };
 
   return (
@@ -84,7 +101,6 @@ export default function MerchantHomeScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeArea}>
         
-        {/* REUSABLE HEADER INJECTED HERE */}
         <Header navigation={navigation} />
 
         {loading ? (
@@ -156,12 +172,7 @@ export default function MerchantHomeScreen({ navigation }) {
                         <Text style={styles.eventTitle} numberOfLines={1}>{event.event_name}</Text>
                         
                         <View style={styles.progressHeader}>
-                          <Text style={styles.progressLabel}>{event.tickets_sold} / {event.event_total_tickets} Sold</Text>
-                          <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
-                        </View>
-                        
-                        <View style={styles.progressBarBg}>
-                          <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+                          <Text style={styles.progressLabel}>{event.tickets_sold} Ticket(s) Sold</Text>
                         </View>
                       </View>
                       <View style={styles.chevronBox}>
