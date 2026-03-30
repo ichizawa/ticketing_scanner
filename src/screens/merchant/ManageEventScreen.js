@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,11 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
-  StatusBar
+  StatusBar,
+  Animated,
+  ScrollView,
+  Image,
+  ImageBackground
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,12 +42,12 @@ const getImageUrl = (path) => {
   if (path.startsWith('http')) return path;
 
   // Ensure the base URL includes /storage if your API doesn't provide it
-  const baseUrl = IMAGE_BASE_URL.endsWith('/') 
-    ? IMAGE_BASE_URL.slice(0, -1) 
+  const baseUrl = IMAGE_BASE_URL.endsWith('/')
+    ? IMAGE_BASE_URL.slice(0, -1)
     : IMAGE_BASE_URL;
 
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  
+
   // If your database path doesn't include 'storage/', add it here:
   return `${baseUrl}/storage/${cleanPath}`;
 };
@@ -55,14 +59,10 @@ const getStatusColor = (status) => {
   return '#00C2FF';
 };
 
-// Background decoration component from reference design
 const BgDecor = () => (
   <>
     <View style={styles.bgOrb1} />
     <View style={styles.bgOrb2} />
-    {[...Array(5)].map((_, i) => (
-      <View key={i} style={[styles.gridLine, { top: (width * 0.4) * i }]} />
-    ))}
   </>
 );
 
@@ -73,7 +73,39 @@ export default function ManageEventScreen({ navigation }) {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { userInfo, logout } = useContext(AuthContext);
 
+  const [activeTab, setActiveTab] = useState('All Events');
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const TABS = ['All Events', 'Upcoming', 'Ongoing', 'Completed', 'Active', 'Cancelled'];
+
+  const getFilteredEvents = () => {
+    if (activeTab === 'All Events') return events;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    return events.filter(event => {
+      // Normalize status and date if needed
+      const statusStr = String(event.status || '').toUpperCase();
+      const eventDate = event.event_date; // Assuming YYYY-MM-DD
+
+      switch (activeTab) {
+        case 'Upcoming':
+          return eventDate > todayStr;
+        case 'Ongoing':
+          return eventDate === todayStr;
+        case 'Completed':
+          return eventDate < todayStr;
+        case 'Active':
+          return event.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE';
+        case 'Cancelled':
+          return event.status === 0 || statusStr === 'CANCELLED';
+        default:
+          return true;
+      }
+    });
+  };
+
 
   useEffect(() => {
     Animated.loop(
@@ -125,46 +157,107 @@ export default function ManageEventScreen({ navigation }) {
   };
 
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
-  const { logout } = useContext(AuthContext);
 
   const handleLogout = () => {
     setLogoutModalVisible(true);
   };
-  
+
   const confirmLogout = () => {
     setLogoutModalVisible(false);
     logout();
   };
 
+  const renderTabs = () => (
+    <View style={styles.tabsWrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsScroll}
+      >
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              style={[
+                styles.tabItem,
+                isActive && styles.activeTabItem
+              ]}
+            >
+              <Text style={[
+                styles.tabTextUI,
+                isActive && styles.activeTabTextUI
+              ]}>
+                {tab}
+              </Text>
+              {isActive && <View style={styles.activeIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+
   const renderEvent = ({ item }) => {
     // Defaulting to cyan/green accents from the reference design
-    const accentColor = '#00C2FF';
-    const statusColor = '#00E5A0';
-    
+    const statusStr = String(item.status || '').toUpperCase();
+    const isLive = item.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE' || statusStr === 'ON LIVE';
+
+    const accentColor = isLive ? '#00E5A0' : '#00C2FF';
+    const statusColor = getStatusColor(statusStr);
+
     // DB status is tinyint, so 1 is usually Active
-    const statusLabel = item.status === 1 ? 'ACTIVE' : 'INACTIVE';
+    const statusLabel = isLive ? 'ACTIVE' : 'INACTIVE';
+
+    const total = item.event_total_tickets || 0;
+    const sold = item.tickets_sold || 0;
+    const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
 
     return (
-      <TouchableOpacity 
-        style={[styles.eventCard, { borderColor: '#132035' }]} 
+      <TouchableOpacity
+        style={[styles.eventCard, { borderColor: isLive ? accentColor + '55' : '#132035' }]}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
         {/* Top row with status pill */}
         <View style={styles.cardTopRow}>
           <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            {isLive && <View style={[styles.statusDot, { backgroundColor: statusColor }]} />}
             <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+          </View>
+
+          <View style={[
+            styles.accentTag,
+            { backgroundColor: accentColor + '18', borderColor: accentColor + '33' }
+          ]}>
+            <Text style={[styles.accentTagText, { color: accentColor }]}>
+              {pct}% SOLD
+            </Text>
           </View>
         </View>
 
         {/* Info */}
         <Text style={styles.cardTitle}>{item.event_name}</Text>
         <Text style={styles.cardVenue}>{item.event_venue}</Text>
-        <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {item.event_time}</Text>
+        <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {formatTime(item.event_time)}</Text>
+
+        <View style={styles.miniRow}>
+          <View style={styles.miniTrack}>
+            <View
+              style={[
+                styles.miniFill,
+                { width: `${pct}%`, backgroundColor: accentColor }
+              ]}
+            />
+          </View>
+          <Text style={styles.miniCount}>
+            {sold.toLocaleString()} / {total.toLocaleString()} SOLD
+          </Text>
+        </View>
 
         {/* Footer line mimicking reference */}
-        <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
+        <View style={[styles.cardFooter, { borderTopColor: isLive ? accentColor + '22' : '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
             VIEW DETAILS  ›
           </Text>
@@ -190,8 +283,8 @@ export default function ManageEventScreen({ navigation }) {
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerBranding}>
-              <Text style={styles.headerMedia}>Manage</Text>
-              <Text style={styles.headerTix}>E</Text>
+              <Text style={styles.headerMedia}>MediaOne</Text>
+              <Text style={styles.headerTix}>Tix</Text>
             </Text>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
@@ -384,8 +477,8 @@ export default function ManageEventScreen({ navigation }) {
               </TouchableOpacity>
               <View style={styles.headerCenter}>
                 <Text style={styles.headerBranding}>
-                  <Text style={styles.headerMedia}>Manage</Text>
-                  <Text style={styles.headerTix}>Events</Text>
+                  <Text style={styles.headerMedia}>MediaOne</Text>
+                  <Text style={styles.headerTix}>Tix</Text>
                 </Text>
               </View>
               <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
@@ -393,16 +486,25 @@ export default function ManageEventScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            <View style={styles.pageHeadRow}>
+              <View>
+                <Text style={styles.pageHeadTitle}>Manage Events</Text>
+                <Text style={styles.pageHeadSub}>Monitor your event performance and sales.</Text>
+              </View>
+            </View>
+
+            {renderTabs()}
+
             <View style={{ flex: 1 }}>
               <FlatList
-                data={events}
+                data={getFilteredEvents()}
                 renderItem={renderEvent}
                 keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                   <View style={[styles.centerContainer, { marginTop: 100 }]}>
-                    <Text style={styles.noDataText}>NO EVENTS ON RECORD</Text>
+                    <Text style={styles.noDataText}>NO {activeTab.toUpperCase()} EVENTS ON RECORD</Text>
                   </View>
                 }
               />
@@ -424,15 +526,11 @@ const styles = StyleSheet.create({
   },
   bgOrb1: {
     position: 'absolute', width: 400, height: 400, borderRadius: 200,
-    backgroundColor: '#00C2FF', top: -150, left: -200, opacity: 0.03,
+    backgroundColor: '#00C2FF', top: -100, right: -100, opacity: 0.04,
   },
   bgOrb2: {
     position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: '#FF4D6A', bottom: -50, right: -150, opacity: 0.02,
-  },
-  gridLine: {
-    position: 'absolute', left: 0, right: 0, height: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FF5733', bottom: -50, left: -100, opacity: 0.03,
   },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -527,4 +625,56 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B1623',
   },
   viewOnlyText: { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  pageHeadRow: {
+    paddingHorizontal: 20, marginBottom: 10, marginTop: 5,
+  },
+  pageHeadTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
+  pageHeadSub: { color: '#4A5568', fontSize: 13, marginTop: 4 },
+  accentTag: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  accentTagText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  miniRow: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, marginBottom: 8 },
+  miniTrack: { flex: 1, height: 4, backgroundColor: '#0F1E30', borderRadius: 2, overflow: 'hidden' },
+  miniFill: { height: '100%', borderRadius: 2 },
+  miniCount: { color: '#4A5568', fontSize: 11, fontWeight: '600' },
+  tabsWrapper: {
+    marginVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  tabsScroll: {
+    paddingHorizontal: 20,
+    gap: 20,
+    paddingBottom: 10,
+  },
+  tabItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTabItem: {
+    // marginBottom: -10,
+  },
+  tabTextUI: {
+    color: '#4A8AAF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  activeTabTextUI: {
+    color: '#00C2FF',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    width: '100%',
+    height: 3,
+    backgroundColor: '#00C2FF',
+    borderRadius: 2,
+    shadowColor: '#00C2FF',
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 });

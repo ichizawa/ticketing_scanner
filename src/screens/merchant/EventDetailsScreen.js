@@ -1,11 +1,11 @@
 import React from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  Image, 
-  ScrollView, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  ScrollView,
+  TouchableOpacity,
   StatusBar,
   Dimensions,
   Platform
@@ -18,14 +18,14 @@ export default function EventDetailsScreen({ route, navigation }) {
   const { event } = route.params;
 
   // Calculate ticket percentage for the progress bar
-  const ticketProgress = event.event_total_tickets > 0 
-    ? (event.tickets_sold / event.event_total_tickets) * 100 
+  const ticketProgress = event.event_total_tickets > 0
+    ? (event.tickets_sold / event.event_total_tickets) * 100
     : 0;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Absolute Background Orbs */}
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
@@ -44,9 +44,9 @@ export default function EventDetailsScreen({ route, navigation }) {
           {/* Main Hero Image */}
           <View style={styles.imageContainer}>
             {event.event_image_url ? (
-              <Image 
-                source={{ uri: event.event_image_url }} 
-                style={styles.heroImage} 
+              <Image
+                source={{ uri: event.event_image_url }}
+                style={styles.heroImage}
                 resizeMode="cover"
               />
             ) : (
@@ -61,14 +61,14 @@ export default function EventDetailsScreen({ route, navigation }) {
 
           <View style={styles.contentContainer}>
             <Text style={styles.title}>{event.event_name}</Text>
-            
+
             {/* Info Card */}
             <View style={styles.infoCard}>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>DATE & TIME</Text>
                 <Text style={styles.infoValue}>{event.event_date} @ {event.event_time}</Text>
               </View>
-              
+
               <View style={styles.divider} />
 
               <View style={styles.infoItem}>
@@ -96,11 +96,11 @@ export default function EventDetailsScreen({ route, navigation }) {
               <>
                 <Text style={styles.sectionTitle}>Seat Plan</Text>
                 <TouchableOpacity activeOpacity={0.9}>
-                    <Image 
-                        source={{ uri: event.seat_plan_url }} 
-                        style={styles.seatPlanImage} 
-                        resizeMode="contain"
-                    />
+                  <Image
+                    source={{ uri: event.seat_plan_url }}
+                    style={styles.seatPlanImage}
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
               </>
             )}
@@ -126,15 +126,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 10,
   },
-  backBtn: { 
-    width: 44, height: 44, borderRadius: 22, 
-    backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' 
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center'
   },
   backBtnText: { color: '#FFFFFF', fontSize: 20, fontWeight: '300' },
   headerTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', letterSpacing: 0.5 },
-  
+
   scrollContent: { paddingBottom: 60 },
-  
+
   imageContainer: {
     marginHorizontal: 20, marginTop: 10,
     borderRadius: 24, overflow: 'hidden',
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   heroImage: { width: '100%', height: 240 },
   placeholderImage: { width: '100%', height: 240, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
-  
+
   statusPill: {
     position: 'absolute', top: 15, right: 15,
     backgroundColor: 'rgba(0, 229, 160, 0.9)',
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
 
   contentContainer: { paddingHorizontal: 24, marginTop: 25 },
   title: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', marginBottom: 20 },
-  
+
   infoCard: {
     backgroundColor: '#0D1526', borderRadius: 20, padding: 20,
     borderWidth: 1, borderColor: '#1A2A44', marginBottom: 25,
@@ -171,9 +171,9 @@ const styles = StyleSheet.create({
 
   sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginBottom: 12, marginTop: 10 },
   description: { color: '#A0B3C6', fontSize: 15, lineHeight: 24, marginBottom: 25 },
-  
-  seatPlanImage: { 
-    width: '100%', height: 200, borderRadius: 16, 
-    backgroundColor: '#132035', marginTop: 5, borderWidth: 1, borderColor: '#1A2A44' 
+
+  seatPlanImage: {
+    width: '100%', height: 200, borderRadius: 16,
+    backgroundColor: '#132035', marginTop: 5, borderWidth: 1, borderColor: '#1A2A44'
   },
 });
