@@ -1,5 +1,10 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useContext } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+// Example Icon import - you can uncomment and use your own vector icons (e.g., Ionicons, MaterialIcons)
+// import Icon from 'react-native-vector-icons/Ionicons'; 
+
 import ScannerScreen from "../screens/organizer/ScannerScreen";
 import HomeScreen from "../screens/attendee/AttendeeHomeScreen";
 import MerchantHomeScreen from "../screens/merchant/MerchantHomeScreen";
@@ -27,28 +32,53 @@ export default function DrawerNavigation({ route }) {
         <Drawer.Navigator
             screenOptions={{
                 headerShown: false,
-                // drawerType: "slide",
-                drawerStyle: { width: "60%" }
+                drawerType: "slide",
+
+                drawerStyle: {
+                    backgroundColor: '#050A14', 
+                    width: "70%", 
+                    borderRightWidth: 1,
+                    borderRightColor: '#1A2A44',
+                },
+                
+                drawerActiveTintColor: '#00C2FF', 
+                drawerInactiveTintColor: '#A0B3C6', 
+                drawerActiveBackgroundColor: 'rgba(0, 194, 255, 0.1)', 
+                drawerItemStyle: {
+                    borderRadius: 12, 
+                    marginVertical: 4, 
+                    paddingHorizontal: 8,
+                },
+                drawerLabelStyle: {
+                    fontSize: 16,
+                    fontWeight: '600',
+                    marginLeft: -10, 
+                },
             }}
         >
 
             {/* MERCHANT ROLE */}
-            {userRole === 'merchant' ? (
+            {userRole === 'merchant' && (
                 <>
                     <Drawer.Screen
                         name="MerchantHome"
                         component={MerchantHomeScreen}
-                        options={{ title: "Dashboard" }}
+                        options={{ 
+                            title: "Dashboard",
+                        }}
                     />
                     <Drawer.Screen
                         name="MerchantManageEvent"
                         component={ManageEventScreen}
-                        options={{ title: "Manage Events" }}
+                        options={{ 
+                            title: "Manage Events",
+                        }}
                     />
                 </>
-            ) : null}
+            )}
+
             {/* STAFF ROLE */}
-            {userRole === 'staff' ? (
+            {userRole === 'staff' && (
                 <>
                     <Drawer.Screen
                         name="OrganizerHome"
@@ -71,17 +101,16 @@ export default function DrawerNavigation({ route }) {
                         options={{ title: "Track Attendee" }}
                     />
                 </>
-            ) : null}
+            )}
 
             {/* CUSTOMER ROLE */}
-            {userRole === 'user' ? (
+            {userRole === 'user' && (
                 <>
                     <Drawer.Screen
                         name="CustomerHome"
                         component={HomeScreen}
                         options={{ title: "Dashboard" }}
                     />
-
                     <Drawer.Screen
                         name="CustomerPurchase"
                         component={PurchaseScreen}
@@ -93,7 +122,7 @@ export default function DrawerNavigation({ route }) {
                         options={{ title: "Purchase History" }}
                     />
                 </>
-            ) : null}
+            )}
         </Drawer.Navigator>
     );
 }
