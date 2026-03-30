@@ -2,18 +2,17 @@ import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   StyleSheet,
   Text,
-  Alert,
   View,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  Modal,
   StatusBar,
   Animated,
   ScrollView,
   Image,
-  ImageBackground
+  ImageBackground,
+  RefreshControl 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,42 +20,19 @@ import { Foundation } from '@expo/vector-icons';
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 import { AuthContext } from '../../context/AuthContext';
 
+import Header from '../../components/Header'; 
+
 const { width } = Dimensions.get('window');
 
-const formatTime = (time) => {
-  if (!time) return 'TBA';
-  try {
-    const parts = time.split(':');
-    if (parts.length < 2) return time;
-    let h = parseInt(parts[0], 10);
-    const m = parts[1];
-    h = h % 12 || 12;
-    return `${h}:${m}`;
-  } catch (e) {
-    return time;
+// Helper function to return the correct label and base color
+const getStatusConfig = (statusCode) => {
+  switch (statusCode) {
+    case 0: return { label: 'UPCOMING', color: '#FFAA00' }; 
+    case 1: return { label: 'ACTIVE', color: '#00E5A0' };  
+    case 2: return { label: 'ONGOING', color: '#00C2FF' };
+    case 3: return { label: 'COMPLETED', color: '#4B4B4B' };
+    default: return { label: 'CANCELLED', color: '#FF4D6A' };
   }
-};
-
-const getImageUrl = (path) => {
-  if (!path || path === 'null') return null;
-  if (path.startsWith('http')) return path;
-
-  // Ensure the base URL includes /storage if your API doesn't provide it
-  const baseUrl = IMAGE_BASE_URL.endsWith('/')
-    ? IMAGE_BASE_URL.slice(0, -1)
-    : IMAGE_BASE_URL;
-
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-
-  // If your database path doesn't include 'storage/', add it here:
-  return `${baseUrl}/storage/${cleanPath}`;
-};
-
-const getStatusColor = (status) => {
-  const s = String(status || '').toUpperCase();
-  if (s === 'LIVE' || s === 'ACTIVE' || s === 'ON LIVE') return '#00E5A0';
-  if (s === 'COMPLETED' || s === 'DONE LIVE' || s === 'PAST') return '#3D6080';
-  return '#00C2FF';
 };
 
 const BgDecor = () => (
@@ -69,6 +45,7 @@ const BgDecor = () => (
 export default function ManageEventScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); 
   const [error, setError] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { userInfo, logout } = useContext(AuthContext);
@@ -123,9 +100,9 @@ export default function ManageEventScreen({ navigation }) {
     }
   }, [userInfo]);
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true); 
       setError(null);
 
       if (!userInfo?.token) {
@@ -145,7 +122,6 @@ export default function ManageEventScreen({ navigation }) {
 
       const json = await response.json();
 
-      // Handle different API response formats
       const eventData = json.data || json.events || json;
       setEvents(Array.isArray(eventData) ? eventData : []);
     } catch (err) {
@@ -153,18 +129,14 @@ export default function ManageEventScreen({ navigation }) {
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
+      if (isRefresh) setRefreshing(false); 
     }
   };
+  
 
-  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
-
-  const handleLogout = () => {
-    setLogoutModalVisible(true);
-  };
-
-  const confirmLogout = () => {
-    setLogoutModalVisible(false);
-    logout();
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchEvents(true);
   };
 
   const renderTabs = () => (
@@ -200,19 +172,8 @@ export default function ManageEventScreen({ navigation }) {
   );
 
   const renderEvent = ({ item }) => {
-    // Defaulting to cyan/green accents from the reference design
-    const statusStr = String(item.status || '').toUpperCase();
-    const isLive = item.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE' || statusStr === 'ON LIVE';
-
-    const accentColor = isLive ? '#00E5A0' : '#00C2FF';
-    const statusColor = getStatusColor(statusStr);
-
-    // DB status is tinyint, so 1 is usually Active
-    const statusLabel = isLive ? 'ACTIVE' : 'INACTIVE';
-
-    const total = item.event_total_tickets || 0;
-    const sold = item.tickets_sold || 0;
-    const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
+    const accentColor = '#00C2FF';
+    const statusConfig = getStatusConfig(item.status);
 
     return (
       <TouchableOpacity
@@ -220,11 +181,12 @@ export default function ManageEventScreen({ navigation }) {
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
-        {/* Top row with status pill */}
         <View style={styles.cardTopRow}>
-          <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
-            {isLive && <View style={[styles.statusDot, { backgroundColor: statusColor }]} />}
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+          <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '18' }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
           </View>
 
           <View style={[
@@ -237,7 +199,6 @@ export default function ManageEventScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Info */}
         <Text style={styles.cardTitle}>{item.event_name}</Text>
         <Text style={styles.cardVenue}>{item.event_venue}</Text>
         <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {formatTime(item.event_time)}</Text>
@@ -256,189 +217,29 @@ export default function ManageEventScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* Footer line mimicking reference */}
-        <View style={[styles.cardFooter, { borderTopColor: isLive ? accentColor + '22' : '#0F1E30' }]}>
+        <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
-            VIEW DETAILS  ›
+            VIEW DETAILS ›
           </Text>
         </View>
       </TouchableOpacity>
     );
   };
 
-  const EventDetailView = ({ event, onBack }) => {
-    const statusStr = String(event.status || '').toUpperCase();
-    const statusColor = getStatusColor(statusStr);
-
-    const total = event.event_total_tickets || 0;
-    const sold = event.tickets_sold || 0;
-    const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
-
-    return (
-      <View style={styles.detailRoot}>
-        {/* Detail Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Foundation name="arrow-left" size={24} color={statusColor} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerBranding}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScroll}>
-          {/* Hero Image */}
-          <View style={styles.detailHero}>
-            <ImageBackground
-              source={{ uri: getImageUrl(event.event_image) }}
-              style={styles.detailBanner}
-              imageStyle={{ borderRadius: 24 }}>
-              <LinearGradient colors={['transparent', 'rgba(5,10,20,0.95)']}
-                style={styles.detailHeroOverlay}>
-                <Text style={styles.detailTitle}>{event.event_name}</Text>
-                <View style={styles.heroMetaRow}>
-                  <View style={styles.heroMetaItem}>
-                    <Foundation name="marker" size={14} color={statusColor} />
-                    <Text style={styles.heroMetaText}>{event.event_venue || 'No Venue Specified'}</Text>
-                  </View>
-                  <View style={styles.heroMetaItem}>
-                    <Foundation name="calendar" size={14} color={statusColor} />
-                    <Text style={[styles.heroMetaText, { color: statusColor }]}>{event.event_date}</Text>
-                  </View>
-                  <View style={styles.heroMetaItem}>
-                    <Foundation name="clock" size={14} color={statusColor} />
-                    <Text style={[styles.heroMetaText, { color: statusColor }]}>{formatTime(event.event_time)}</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </ImageBackground>
-          </View>
-
-          {/* Main Counter Card */}
-          <View style={[styles.mainCard, { shadowColor: statusColor }]}>
-            <View style={styles.mainHeader}>
-              <View>
-                <Text style={styles.mainLabel}>TOTAL TICKETS SOLD</Text>
-                <Text style={styles.mainCount}>
-                  {sold.toLocaleString()}
-                  <Text style={styles.mainCapacity}> / {total.toLocaleString()}</Text>
-                </Text>
-              </View>
-              <View style={[styles.pctBadge, { borderColor: statusColor + '40', backgroundColor: statusColor + '10' }]}>
-                <Text style={[styles.pctBadgeText, { color: statusColor }]}>{pct}%</Text>
-              </View>
-            </View>
-
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { width: `${pct}%`, backgroundColor: statusColor }]} />
-              <View style={[styles.progressGlow, { backgroundColor: statusColor }]} />
-            </View>
-
-            <View style={styles.percentRow}>
-              <Text style={styles.percentText}>{pct}% of Capacity Sold</Text>
-              <Text style={styles.remainingText}>
-                {(total - sold).toLocaleString()} Remaining
-              </Text>
-            </View>
-          </View>
-
-          {/* Category Pill Banner */}
-          {event.category && (
-            <View style={styles.detailSection}>
-              <Text style={styles.sectionTitle}>CATEGORY PERFORMANCE</Text>
-              <View style={[styles.categoryPillBanner, { backgroundColor: statusColor + '15', borderColor: statusColor + '30' }]}>
-                <Foundation name="ticket" size={18} color={statusColor} />
-                <Text style={[styles.categoryPillText, { color: statusColor }]}>{event.category.toUpperCase()}</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Ticket Tiers Section */}
-          <View style={styles.detailSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>TICKET TIERS</Text>
-            </View>
-            <View style={styles.tierCard}>
-              <View style={styles.tierHeader}>
-                <Text style={styles.tierName}>REGULAR ENTRY</Text>
-                <Text style={[styles.tierPrice, { color: statusColor }]}>₱1,500</Text>
-              </View>
-              <View style={styles.tierStats}>
-                <View style={styles.tierStatItem}>
-                  <Text style={styles.tierStatVal}>{sold.toLocaleString()}</Text>
-                  <Text style={styles.tierStatLabel}>SOLD</Text>
-                </View>
-                <View style={[styles.tierDivider, { backgroundColor: statusColor + '20' }]} />
-                <View style={styles.tierStatItem}>
-                  <Text style={styles.tierStatVal}>{total.toLocaleString()}</Text>
-                  <Text style={styles.tierStatLabel}>CAPACITY</Text>
-                </View>
-              </View>
-
-              {/* Tier Progress Bar */}
-              <View style={styles.tierProgressContainer}>
-                <View style={[styles.tierProgressBar, { width: `${pct}%`, backgroundColor: statusColor }]} />
-              </View>
-              <Text style={[styles.tierPctText, { color: statusColor }]}>{pct}% Sold</Text>
-            </View>
-          </View>
-
-          {/* Line-up Section */}
-          <View style={styles.detailSection}>
-            <Text style={styles.sectionTitle}>EVENT LINE-UP</Text>
-            <View style={styles.lineupGrid}>
-              {['Headliner Name', 'Supporting Artist', 'Guest Performer'].map((artist, idx) => (
-                <View key={idx} style={styles.lineupItem}>
-                  <View style={[styles.artistAvatar, { backgroundColor: statusColor + '20' }]}>
-                    <Foundation name="torsos-all" size={24} color={statusColor} />
-                  </View>
-                  <Text style={styles.artistName}>{artist}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Seat Plan Section */}
-          {event.seat_plan && (
-            <View style={styles.detailSection}>
-              <Text style={styles.sectionTitle}>SEAT PLAN</Text>
-              <View style={styles.seatPlanContainer}>
-                <Image source={{ uri: getImageUrl(event.seat_plan) }} style={styles.detailSeatPlanImage} resizeMode="contain" />
-              </View>
-            </View>
-          )}
-
-          {/* Description Section */}
-          {event.description && (
-            <View style={styles.detailSection}>
-              <Text style={styles.sectionTitle}>EVENT DESCRIPTION</Text>
-              <View style={styles.descCard}>
-                <Text style={styles.detailDescText}>{event.description}</Text>
-              </View>
-            </View>
-          )}
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
-    );
-  };
+  // --- RETURN STATES ---
 
   if (loading) {
     return (
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#00C2FF" />
-          <Text style={styles.loadingText}>FETCHING EVENTS...</Text>
-        </View>
+        <SafeAreaView style={styles.safeArea}>
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#00C2FF" />
+            <Text style={styles.loadingText}>Loading events...</Text>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -448,12 +249,15 @@ export default function ManageEventScreen({ navigation }) {
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchEvents}>
-            <Text style={styles.retryText}>REFRESH</Text>
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView style={styles.safeArea}>
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => fetchEvents()}>
+              <Text style={styles.retryText}>RETRY</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -464,52 +268,36 @@ export default function ManageEventScreen({ navigation }) {
       <BgDecor />
 
       <SafeAreaView style={styles.safeArea}>
-        {selectedEvent ? (
-          <EventDetailView event={selectedEvent} onBack={() => setSelectedEvent(null)} />
-        ) : (
-          <View style={{ flex: 1 }}>
-            {/* Header matches reference */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-                <View style={styles.menuLine} />
-                <View style={[styles.menuLine, { width: 14 }]} />
-                <View style={styles.menuLine} />
-              </TouchableOpacity>
-              <View style={styles.headerCenter}>
-                <Text style={styles.headerBranding}>
-                  <Text style={styles.headerMedia}>MediaOne</Text>
-                  <Text style={styles.headerTix}>Tix</Text>
-                </Text>
-              </View>
-              <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-                <View style={styles.profileAvatar} />
-              </TouchableOpacity>
-            </View>
+        <Header navigation={navigation} />
 
-            <View style={styles.pageHeadRow}>
-              <View>
-                <Text style={styles.pageHeadTitle}>Manage Events</Text>
-                <Text style={styles.pageHeadSub}>Monitor your event performance and sales.</Text>
-              </View>
-            </View>
+        {/* 5. Added Section Header for the Manual Sync Button */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Manage Active Events</Text>
+          <TouchableOpacity onPress={onRefresh}>
+            <Text style={styles.refreshText}>Sync Data</Text>
+          </TouchableOpacity>
+        </View>
 
-            {renderTabs()}
-
-            <View style={{ flex: 1 }}>
-              <FlatList
-                data={getFilteredEvents()}
-                renderItem={renderEvent}
-                keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                  <View style={[styles.centerContainer, { marginTop: 100 }]}>
-                    <Text style={styles.noDataText}>NO {activeTab.toUpperCase()} EVENTS ON RECORD</Text>
-                  </View>
-                }
-              />
-            </View>
+        {events.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.noDataText}>No events found</Text>
           </View>
+        ) : (
+          <FlatList
+            data={events}
+            renderItem={renderEvent}
+            keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            // 6. Added RefreshControl here
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh} 
+                tintColor="#00C2FF" 
+              />
+            }
+          />
         )}
       </SafeAreaView>
     </View>
@@ -532,21 +320,22 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 300, height: 300, borderRadius: 150,
     backgroundColor: '#FF5733', bottom: -50, left: -100, opacity: 0.03,
   },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16,
+  // Added Styles for the Sync Button Header
+  sectionHeader: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10
   },
-  headerCenter: { alignItems: 'center' },
-  headerBranding: { fontSize: 20 },
-  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
-  headerTix: { color: '#00C2FF', fontWeight: '800' },
-  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
-  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
+  sectionTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  refreshText: { color: '#00C2FF', fontSize: 13, fontWeight: '600' },
+  
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    paddingTop: 10,
   },
   eventCard: {
     backgroundColor: '#0B1623',
