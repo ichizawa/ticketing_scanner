@@ -2,24 +2,33 @@ import React, { useEffect, useState, useContext } from 'react';
 import {
   StyleSheet,
   Text,
-  Alert,
   View,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  StatusBar
+  StatusBar,
+  RefreshControl 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../config';
 import { AuthContext } from '../../context/AuthContext';
 
-// Import the Header component
 import Header from '../../components/Header'; 
 
 const { width } = Dimensions.get('window');
 
-// Background decoration component
+// Helper function to return the correct label and base color
+const getStatusConfig = (statusCode) => {
+  switch (statusCode) {
+    case 0: return { label: 'UPCOMING', color: '#FFAA00' }; 
+    case 1: return { label: 'ACTIVE', color: '#00E5A0' };  
+    case 2: return { label: 'ONGOING', color: '#00C2FF' };
+    case 3: return { label: 'COMPLETED', color: '#4B4B4B' };
+    default: return { label: 'CANCELLED', color: '#FF4D6A' };
+  }
+};
+
 const BgDecor = () => (
   <>
     <View style={styles.bgOrb1} />
@@ -33,6 +42,7 @@ const BgDecor = () => (
 export default function ManageEventScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); 
   const [error, setError] = useState(null);
   const { userInfo } = useContext(AuthContext);
 
@@ -45,9 +55,9 @@ export default function ManageEventScreen({ navigation }) {
     }
   }, [userInfo]);
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true); 
       setError(null);
 
       if (!userInfo?.token) {
@@ -67,7 +77,6 @@ export default function ManageEventScreen({ navigation }) {
 
       const json = await response.json();
 
-      // Handle different API response formats
       const eventData = json.data || json.events || json;
       setEvents(Array.isArray(eventData) ? eventData : []);
     } catch (err) {
@@ -75,13 +84,19 @@ export default function ManageEventScreen({ navigation }) {
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
+      if (isRefresh) setRefreshing(false); 
     }
+  };
+  
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchEvents(true);
   };
 
   const renderEvent = ({ item }) => {
     const accentColor = '#00C2FF';
-    const statusColor = '#00E5A0';
-    const statusLabel = item.status === 1 ? 'ACTIVE' : 'INACTIVE';
+    const statusConfig = getStatusConfig(item.status);
 
     return (
       <TouchableOpacity 
@@ -90,9 +105,11 @@ export default function ManageEventScreen({ navigation }) {
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
         <View style={styles.cardTopRow}>
-          <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+          <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '18' }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
           </View>
         </View>
 
@@ -102,7 +119,7 @@ export default function ManageEventScreen({ navigation }) {
 
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
-            VIEW DETAILS  ›
+            VIEW DETAILS ›
           </Text>
         </View>
       </TouchableOpacity>
@@ -117,7 +134,6 @@ export default function ManageEventScreen({ navigation }) {
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
         <SafeAreaView style={styles.safeArea}>
-          {/* Header Added Here */}
           <Header navigation={navigation} />
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#00C2FF" />
@@ -134,29 +150,12 @@ export default function ManageEventScreen({ navigation }) {
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
         <BgDecor />
         <SafeAreaView style={styles.safeArea}>
-           {/* Header Added Here */}
           <Header navigation={navigation} />
           <View style={styles.centerContainer}>
             <Text style={styles.errorText}>Error: {error}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={fetchEvents}>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => fetchEvents()}>
               <Text style={styles.retryText}>RETRY</Text>
             </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  if (events.length === 0) {
-    return (
-      <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#050A14" />
-        <BgDecor />
-        <SafeAreaView style={styles.safeArea}>
-           {/* Header Added Here */}
-          <Header navigation={navigation} />
-          <View style={styles.centerContainer}>
-            <Text style={styles.noDataText}>No events found</Text>
           </View>
         </SafeAreaView>
       </View>
@@ -169,16 +168,37 @@ export default function ManageEventScreen({ navigation }) {
       <BgDecor />
 
       <SafeAreaView style={styles.safeArea}>
-         {/* Main Header Added Here */}
         <Header navigation={navigation} />
 
-        <FlatList
-          data={events}
-          renderItem={renderEvent}
-          keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
+        {/* 5. Added Section Header for the Manual Sync Button */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Manage Active Events</Text>
+          <TouchableOpacity onPress={onRefresh}>
+            <Text style={styles.refreshText}>Sync Data</Text>
+          </TouchableOpacity>
+        </View>
+
+        {events.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.noDataText}>No events found</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={events}
+            renderItem={renderEvent}
+            keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            // 6. Added RefreshControl here
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh} 
+                tintColor="#00C2FF" 
+              />
+            }
+          />
+        )}
       </SafeAreaView>
     </View>
   );
@@ -204,6 +224,18 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, height: 1,
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
+  // Added Styles for the Sync Button Header
+  sectionHeader: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10
+  },
+  sectionTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  refreshText: { color: '#00C2FF', fontSize: 13, fontWeight: '600' },
+  
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
