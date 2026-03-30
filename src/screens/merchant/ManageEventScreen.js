@@ -24,6 +24,39 @@ import Header from '../../components/Header';
 
 const { width } = Dimensions.get('window');
 
+const formatTime = (time) => {
+  if (!time) return 'TBA';
+  try {
+    const parts = time.split(':');
+    if (parts.length < 2) return time;
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    h = h % 12 || 12;
+    return `${h}:${m}`;
+  } catch (e) {
+    return time;
+  }
+};
+
+const getImageUrl = (path) => {
+  if (!path || path === 'null') return null;
+  if (path.startsWith('http')) return path;
+
+  const baseUrl = IMAGE_BASE_URL.endsWith('/') 
+    ? IMAGE_BASE_URL.slice(0, -1) 
+    : IMAGE_BASE_URL;
+
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+};
+
+const getStatusColor = (status) => {
+  const s = String(status || '').toUpperCase();
+  if (s === 'LIVE' || s === 'ACTIVE' || s === 'ON LIVE') return '#00E5A0';
+  if (s === 'COMPLETED' || s === 'DONE LIVE' || s === 'PAST') return '#3D6080';
+  return '#00C2FF';
+};
+
 // Helper function to return the correct label and base color
 const getStatusConfig = (statusCode) => {
   switch (statusCode) {
@@ -172,8 +205,16 @@ export default function ManageEventScreen({ navigation }) {
   );
 
   const renderEvent = ({ item }) => {
-    const accentColor = '#00C2FF';
+    const statusStr = String(item.status || '').toUpperCase();
+    const isLive = item.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE' || statusStr === 'ON LIVE';
+    
+    // Default accent or logic to use item's status color
+    const accentColor = isLive ? '#00E5A0' : '#00C2FF';
     const statusConfig = getStatusConfig(item.status);
+
+    const total = item.event_total_tickets || 0;
+    const sold = item.tickets_sold || 0;
+    const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
 
     return (
       <TouchableOpacity
@@ -270,35 +311,41 @@ export default function ManageEventScreen({ navigation }) {
       <SafeAreaView style={styles.safeArea}>
         <Header navigation={navigation} />
 
-        {/* 5. Added Section Header for the Manual Sync Button */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Manage Active Events</Text>
+          <View>
+            <Text style={styles.pageHeadTitle}>Manage Events</Text>
+            <Text style={styles.pageHeadSub}>Monitor your event performance</Text>
+          </View>
           <TouchableOpacity onPress={onRefresh}>
             <Text style={styles.refreshText}>Sync Data</Text>
           </TouchableOpacity>
         </View>
 
-        {events.length === 0 ? (
-          <View style={styles.centerContainer}>
-            <Text style={styles.noDataText}>No events found</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={events}
-            renderItem={renderEvent}
-            keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            // 6. Added RefreshControl here
-            refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={onRefresh} 
-                tintColor="#00C2FF" 
-              />
-            }
-          />
-        )}
+        {renderTabs()}
+
+        <FlatList
+          data={getFilteredEvents()}
+          renderItem={renderEvent}
+          keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={[styles.centerContainer, { marginTop: 60 }]}>
+              <Text style={styles.noDataText}>
+                {events.length === 0 
+                  ? 'No events found' 
+                  : `NO ${activeTab.toUpperCase()} EVENTS`}
+              </Text>
+            </View>
+          }
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              tintColor="#00C2FF" 
+            />
+          }
+        />
       </SafeAreaView>
     </View>
   );
