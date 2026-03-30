@@ -2,9 +2,11 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   Animated, Dimensions, StatusBar
 } from 'react-native'
-import React, { useEffect, useRef, useState, useContext } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import Header from '../../components/Header'; 
+
 
 const { width, height } = Dimensions.get('window')
 const SCANNER_SIZE = width * 0.72
@@ -79,12 +81,10 @@ export default function ScannerScreen({ navigation }) {
   const resultOpacity = useRef(new Animated.Value(0)).current
   const overlayOpacity = useRef(new Animated.Value(0)).current
   const cornerGlow = useRef(new Animated.Value(0)).current
-  const headerFade = useRef(new Animated.Value(0)).current
   const statsSlide = useRef(new Animated.Value(-30)).current
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.spring(statsSlide, { toValue: 0, friction: 8, useNativeDriver: true }),
     ]).start()
   }, [])
@@ -197,32 +197,10 @@ export default function ScannerScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeArea}>
 
-        <Animated.View style={[styles.header, { opacity: headerFade }]}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-            <View style={styles.liveIndicator}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-        </Animated.View>
+      <Header navigation={navigation} />
 
         <Animated.View style={[
           styles.statsBar,
-          { transform: [{ translateY: statsSlide }], opacity: headerFade }
         ]}>
           {[
             { value: scanCount, label: 'SCANNED', color: '#FFFFFF' },
@@ -309,22 +287,6 @@ export default function ScannerScreen({ navigation }) {
             { transform: [{ translateY: resultSlide }], opacity: resultOpacity },
             { borderTopColor: statusConfig?.borderColor + '60' },
           ]}>
-            <View style={[styles.resultHeader, { backgroundColor: statusConfig?.bg }]}>
-              <View style={[styles.resultIconRing, { borderColor: statusConfig?.color }]}>
-                <Text style={[styles.resultIconText, { color: statusConfig?.color }]}>
-                  {statusConfig?.icon}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.resultStatusLabel, { color: statusConfig?.color }]}>
-                  {statusConfig?.label}
-                </Text>
-                <Text style={styles.resultIdText}>{resultData?.id}</Text>
-              </View>
-              <TouchableOpacity onPress={dismissResult} style={styles.closeBtn}>
-                <Text style={styles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
 
             <View style={styles.resultBody}>
               <Text style={styles.attendeeName}>{resultData?.name}</Text>
@@ -387,25 +349,6 @@ const styles = StyleSheet.create({
   },
 
   safeArea: { flex: 1 },
-
-  // Header
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { color: '#4A8AAF', fontSize: 20 },
-  headerCenter: { alignItems: 'center' },
-  headerTitle: { fontSize: 20 },
-  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
-  headerTix: { color: '#00C2FF', fontWeight: '800' },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#00E5A0' },
-  liveText: { color: '#00E5A0', fontSize: 9, fontWeight: '700', letterSpacing: 2 },
-  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
-  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
 
   // Stats
   statsBar: {
@@ -505,10 +448,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5, shadowRadius: 24, elevation: 20,
   },
 
-  resultHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 20, gap: 14,
-  },
+
   resultIconRing: {
     width: 48, height: 48, borderRadius: 24,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',

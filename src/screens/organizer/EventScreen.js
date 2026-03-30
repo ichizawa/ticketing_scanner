@@ -5,6 +5,8 @@ import {
 import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
+import Header from '../../components/Header'; 
+
 
 const { width } = Dimensions.get('window')
 
@@ -87,23 +89,7 @@ export default function EventScreen({ navigation }) {
     return (
       <View style={{ flex: 1 }}>
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-              <Text style={styles.backArrow}>‹</Text>
-            </TouchableOpacity>
-
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle}>
-                <Text style={styles.headerMedia}>MediaOne</Text>
-                <Text style={styles.headerTix}>Tix</Text>
-              </Text>
-            </View>
-
-            <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-              <View style={styles.profileAvatar} />
-            </TouchableOpacity>
-          </View>
-
+          
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {/* Hero Box */}
             <View style={styles.eventHeroBox}>
@@ -199,34 +185,14 @@ export default function EventScreen({ navigation }) {
     );
   }
 
-  // ---------------------------------------
-  // Event Selection View
-  // ---------------------------------------
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
 
       <SafeAreaView style={styles.safeArea}>
 
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} />
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Page Heading */}
@@ -310,7 +276,6 @@ export default function EventScreen({ navigation }) {
   );
 }
 
-/* --------------------------- STYLES (Your unchanged styles pasted) --------------------------- */
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#050A14' },
@@ -325,28 +290,6 @@ const styles = StyleSheet.create({
   },
   safeArea: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 10 },
-
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20,
-  },
-  menuBtn: { width: 40, height: 40, alignItems: 'flex-end', justifyContent: 'center' },
-  menuLine: {
-    width: 20, height: 2, backgroundColor: '#4A8AAF', marginVertical: 2, borderRadius: 2
-  },
-  profileBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  profileAvatar: {
-    width: 26, height: 26, backgroundColor: '#4A8AAF',
-    borderRadius: 13, opacity: 0.5
-  },
-
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 3 },
-  headerMedia: { color: '#00C2FF' },
-  headerTix: { color: '#FFFFFF' },
-
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  backArrow: { fontSize: 26, color: '#4A8AAF', marginLeft: 2 },
 
   pageHeadRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20

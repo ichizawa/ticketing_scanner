@@ -5,6 +5,8 @@ import {
 import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
+import Header from '../../components/Header'; 
+
 
 const { width } = Dimensions.get('window')
 
@@ -83,7 +85,7 @@ const BgOrbs = () => (
   </>
 )
 
-function EventSelectionView({ onSelect, navigation, handleLogout }) {
+function EventSelectionView({ onSelect, navigation }) {
   const pulseAnim = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -101,25 +103,8 @@ function EventSelectionView({ onSelect, navigation, handleLogout }) {
       <BgOrbs />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* HEADER: Updated to reference style */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+       <Header navigation={navigation} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
@@ -404,28 +389,6 @@ const styles = StyleSheet.create({
 
   safeArea:      { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 10 },
-
-  // Updated Header Styles to match Reference
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20,
-  },
-  menuBtn: { width: 40, height: 40, alignItems: 'flex-end', justifyContent: 'center' },
-  menuLine: {
-    width: 20, height: 2, backgroundColor: '#4A8AAF', marginVertical: 2, borderRadius: 2
-  },
-  profileBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  profileAvatar: {
-    width: 26, height: 26, backgroundColor: '#4A8AAF',
-    borderRadius: 13, opacity: 0.5
-  },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 3 },
-  headerMedia: { color: '#00C2FF' },
-  headerTix: { color: '#FFFFFF' },
-
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  backArrow: { fontSize: 26, color: '#4A8AAF', marginLeft: 2 },
 
   pageHeadRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   pageHeadTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', letterSpacing: 0.5, marginBottom: 4 },
