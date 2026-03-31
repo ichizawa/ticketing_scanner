@@ -82,9 +82,10 @@ export default function ManageEventScreen({ navigation }) {
     const todayStr = now.toISOString().split('T')[0];
 
     return events.filter(event => {
+
       // Normalize status and date if needed
       const statusStr = String(event.status || '').toUpperCase();
-      const eventDate = event.event_date; // Assuming YYYY-MM-DD
+      const eventDate = event.event_date; 
 
       switch (activeTab) {
         case 'Upcoming':
@@ -267,8 +268,6 @@ export default function ManageEventScreen({ navigation }) {
     );
   };
 
-  // --- RETURN STATES ---
-
   if (loading) {
     return (
       <View style={styles.root}>
@@ -367,7 +366,7 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 300, height: 300, borderRadius: 150,
     backgroundColor: '#FF5733', bottom: -50, left: -100, opacity: 0.03,
   },
-  // Added Styles for the Sync Button Header
+  // Styles for the Sync Button Header
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

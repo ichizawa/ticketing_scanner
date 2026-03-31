@@ -1,8 +1,4 @@
-import {
-    StyleSheet, Text, View, TouchableOpacity, ScrollView,
-    TextInput, Animated, Dimensions, StatusBar, Image, Alert, Platform,
-    FlatList, Modal
-} from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Animated, Dimensions, StatusBar, Image, Alert, Platform, FlatList, Modal } from 'react-native'
 import { Entypo, MaterialIcons } from '@expo/vector-icons'
 import React, { useState, useRef, useEffect, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'

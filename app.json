@@ -37,6 +37,18 @@
         "projectId": "eee28401-933d-42eb-af88-e8d6ef9a98f0"
       }
     },
-    "owner": "ichizawa"
+    "owner": "ichizawa",
+    "plugins": [
+      [
+        "react-native-vision-camera",
+        {
+          "enableCodeScanner": true,
+          "enableFrameProcessors": true
+        }
+      ],
+      "expo-font",
+      "expo-splash-screen"
+    ]
   }
 }
+

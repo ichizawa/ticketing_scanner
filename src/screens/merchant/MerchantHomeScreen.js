@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import {
-  StyleSheet, Text, View, TouchableOpacity, Dimensions,
-  StatusBar, ScrollView, Image, Alert, ActivityIndicator, RefreshControl
-} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AuthContext } from '../../context/AuthContext';

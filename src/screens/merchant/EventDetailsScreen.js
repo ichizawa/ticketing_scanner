@@ -4,12 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Foundation } from '@expo/vector-icons';
 import Header from '../../components/Header';
-
 import { AuthContext } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
 
 const { width, height } = Dimensions.get('window');
-
 const formatTime = (time) => {
   if (!time) return 'TBA';
   try {
@@ -99,7 +97,7 @@ export default function EventDetailsScreen({ route, navigation }) {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-          {/* Hero Banner */}
+          {/* Hero */}
           <ImageBackground
             source={{ uri: event.event_image_url || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
             style={styles.heroBanner}>

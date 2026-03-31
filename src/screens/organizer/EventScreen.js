@@ -1,7 +1,4 @@
-import {
-  StyleSheet, Text, View, TouchableOpacity,
-  Dimensions, StatusBar, ScrollView, Animated
-} from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Animated } from 'react-native'
 import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'

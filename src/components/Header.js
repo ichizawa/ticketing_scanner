@@ -81,22 +81,22 @@ export default function Header({ navigation, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  // Header Styles
+  // Header
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 12,
   },
-  menuBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start', gap: 5 },
-  menuLine: { width: 24, height: 2.5, backgroundColor: '#FFFFFF', borderRadius: 2 },
-  backArrow: { color: '#FFFFFF', fontSize: 30, fontWeight: '300', marginLeft: 2, lineHeight: 36 },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 20 },
-  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
-  headerTix: { color: '#00C2FF', fontWeight: '800' },
-  profileBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
-  profileAvatar: { flex: 1, borderRadius: 17, backgroundColor: '#4A8AAF', opacity: 0.8 },
+    menuBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start', gap: 5 },
+    menuLine: { width: 24, height: 2.5, backgroundColor: '#FFFFFF', borderRadius: 2 },
+    backArrow: { color: '#FFFFFF', fontSize: 30, fontWeight: '300', marginLeft: 2, lineHeight: 36 },
+    headerCenter: { flex: 1, alignItems: 'center' },
+    headerTitle: { fontSize: 20 },
+    headerMedia: { color: '#FFFFFF', fontWeight: '600' },
+    headerTix: { color: '#00C2FF', fontWeight: '800' },
+    profileBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
+    profileAvatar: { flex: 1, borderRadius: 17, backgroundColor: '#4A8AAF', opacity: 0.8 },
 
-  // Modal Styles
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(5, 10, 20, 0.85)',

@@ -1,7 +1,4 @@
-import {
-  StyleSheet, Text, View, TouchableOpacity,
-  Animated, Dimensions, StatusBar
-} from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Dimensions, StatusBar } from 'react-native'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import NetInfo from '@react-native-community/netinfo'
 import { useIsFocused } from '@react-navigation/native'

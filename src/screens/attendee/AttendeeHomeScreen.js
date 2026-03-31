@@ -1,6 +1,4 @@
-import {
-  StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground, Alert
-} from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground, Alert } from 'react-native'
 import React, { useState, useContext, useRef, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
