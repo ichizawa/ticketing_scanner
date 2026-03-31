@@ -1,10 +1,11 @@
 import {
-  StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground, Alert
+  StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Image, ImageBackground
 } from 'react-native'
 import React, { useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AuthContext } from '../../context/AuthContext'
+import Header from '../../components/Header'
 
 const { width } = Dimensions.get('window')
 
@@ -37,23 +38,6 @@ export default function OrganizerHomeScreen({ navigation }) {
     setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id])
   }
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', onPress: () => {} },
-        {
-          text: 'Logout',
-          onPress: () => {
-            logout();
-          },
-          style: 'destructive'
-        }
-      ]
-    )
-  }
-
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
@@ -61,23 +45,7 @@ export default function OrganizerHomeScreen({ navigation }) {
       <View style={styles.bgOrb2} />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           

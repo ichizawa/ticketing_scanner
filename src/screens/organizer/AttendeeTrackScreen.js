@@ -1,10 +1,11 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  Dimensions, StatusBar, ScrollView, Animated, Alert
+  Dimensions, StatusBar, ScrollView, Animated
 } from 'react-native'
 import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
+import Header from '../../components/Header'
 
 const { width } = Dimensions.get('window')
 
@@ -101,25 +102,7 @@ function EventSelectionView({ onSelect, navigation, handleLogout }) {
       <BgOrbs />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* HEADER: Updated to reference style */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
@@ -242,27 +225,7 @@ function AttendanceReportView({ event, onBack, handleLogout }) {
       <BgOrbs />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* HEADER: Updated to reference style */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Text style={styles.backArrow}>‹</Text>
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} onBack={onBack} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 

@@ -1,26 +1,12 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  StatusBar,
-  Animated,
-  ScrollView,
-  Image,
-  ImageBackground,
-  RefreshControl 
-} from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, StatusBar, Animated, ScrollView, Image, ImageBackground, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Foundation } from '@expo/vector-icons';
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 import { AuthContext } from '../../context/AuthContext';
 
-import Header from '../../components/Header'; 
+import Header from '../../components/Header';
 
 const { width } = Dimensions.get('window');
 
@@ -31,8 +17,9 @@ const formatTime = (time) => {
     if (parts.length < 2) return time;
     let h = parseInt(parts[0], 10);
     const m = parts[1];
+    const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
-    return `${h}:${m}`;
+    return `${h}:${m} ${ampm}`;
   } catch (e) {
     return time;
   }
@@ -42,8 +29,8 @@ const getImageUrl = (path) => {
   if (!path || path === 'null') return null;
   if (path.startsWith('http')) return path;
 
-  const baseUrl = IMAGE_BASE_URL.endsWith('/') 
-    ? IMAGE_BASE_URL.slice(0, -1) 
+  const baseUrl = IMAGE_BASE_URL.endsWith('/')
+    ? IMAGE_BASE_URL.slice(0, -1)
     : IMAGE_BASE_URL;
 
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
@@ -60,8 +47,8 @@ const getStatusColor = (status) => {
 // Helper function to return the correct label and base color
 const getStatusConfig = (statusCode) => {
   switch (statusCode) {
-    case 0: return { label: 'UPCOMING', color: '#FFAA00' }; 
-    case 1: return { label: 'ACTIVE', color: '#00E5A0' };  
+    case 0: return { label: 'UPCOMING', color: '#FFAA00' };
+    case 1: return { label: 'ACTIVE', color: '#00E5A0' };
     case 2: return { label: 'ONGOING', color: '#00C2FF' };
     case 3: return { label: 'COMPLETED', color: '#4B4B4B' };
     default: return { label: 'CANCELLED', color: '#FF4D6A' };
@@ -78,7 +65,7 @@ const BgDecor = () => (
 export default function ManageEventScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); 
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { userInfo, logout } = useContext(AuthContext);
@@ -135,7 +122,7 @@ export default function ManageEventScreen({ navigation }) {
 
   const fetchEvents = async (isRefresh = false) => {
     try {
-      if (!isRefresh) setLoading(true); 
+      if (!isRefresh) setLoading(true);
       setError(null);
 
       if (!userInfo?.token) {
@@ -162,10 +149,10 @@ export default function ManageEventScreen({ navigation }) {
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
-      if (isRefresh) setRefreshing(false); 
+      if (isRefresh) setRefreshing(false);
     }
   };
-  
+
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -207,7 +194,7 @@ export default function ManageEventScreen({ navigation }) {
   const renderEvent = ({ item }) => {
     const statusStr = String(item.status || '').toUpperCase();
     const isLive = item.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE' || statusStr === 'ON LIVE';
-    
+
     // Default accent or logic to use item's status color
     const accentColor = isLive ? '#00E5A0' : '#00C2FF';
     const statusConfig = getStatusConfig(item.status);
@@ -222,23 +209,34 @@ export default function ManageEventScreen({ navigation }) {
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
-        <View style={styles.cardTopRow}>
-          <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '18' }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {statusConfig.label}
-            </Text>
-          </View>
+        <ImageBackground
+          source={{ uri: item.event_image_url || getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+          style={styles.cardBanner}
+          resizeMode="cover"
+        >
+          <LinearGradient
+            colors={['rgba(5,10,20,0.4)', 'rgba(5,10,20,0.8)']}
+            style={styles.cardGradient}
+          >
+            <View style={styles.cardTopRow}>
+              <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '22' }]}>
+                <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+                <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                  {statusConfig.label}
+                </Text>
+              </View>
 
-          <View style={[
-            styles.accentTag,
-            { backgroundColor: accentColor + '18', borderColor: accentColor + '33' }
-          ]}>
-            <Text style={[styles.accentTagText, { color: accentColor }]}>
-              {pct}% SOLD
-            </Text>
-          </View>
-        </View>
+              <View style={[
+                styles.accentTag,
+                { backgroundColor: accentColor + '22', borderColor: accentColor + '44' }
+              ]}>
+                <Text style={[styles.accentTagText, { color: accentColor }]}>
+                  {pct}% SOLD
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </ImageBackground>
 
         <Text style={styles.cardTitle}>{item.event_name}</Text>
         <Text style={styles.cardVenue}>{item.event_venue}</Text>
@@ -253,9 +251,11 @@ export default function ManageEventScreen({ navigation }) {
               ]}
             />
           </View>
-          <Text style={styles.miniCount}>
-            {sold.toLocaleString()} / {total.toLocaleString()} SOLD
-          </Text>
+          <View style={styles.miniInfo}>
+             <Text style={styles.miniCount}>
+               {sold.toLocaleString()} <Text style={{ color: '#3D6080', fontSize: 10 }}>/ {total.toLocaleString()} SOLD</Text>
+             </Text>
+          </View>
         </View>
 
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
@@ -332,17 +332,17 @@ export default function ManageEventScreen({ navigation }) {
           ListEmptyComponent={
             <View style={[styles.centerContainer, { marginTop: 60 }]}>
               <Text style={styles.noDataText}>
-                {events.length === 0 
-                  ? 'No events found' 
+                {events.length === 0
+                  ? 'No events found'
                   : `NO ${activeTab.toUpperCase()} EVENTS`}
               </Text>
             </View>
           }
           refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh} 
-              tintColor="#00C2FF" 
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#00C2FF"
             />
           }
         />
@@ -369,16 +369,16 @@ const styles = StyleSheet.create({
   },
   // Added Styles for the Sync Button Header
   sectionHeader: {
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     marginTop: 10,
     marginBottom: 10
   },
   sectionTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
   refreshText: { color: '#00C2FF', fontSize: 13, fontWeight: '600' },
-  
+
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
@@ -393,9 +393,14 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25, shadowRadius: 16, elevation: 10,
   },
+  cardBanner: {
+    height: 125, width: '100%', justifyContent: 'flex-end',
+  },
+  cardGradient: {
+    padding: 16, width: '100%',
+  },
   cardTopRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: 16, paddingBottom: 10
   },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20,

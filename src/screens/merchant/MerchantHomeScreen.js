@@ -8,20 +8,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AuthContext } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
 
-import Header from '../../components/Header'; 
+import Header from '../../components/Header';
 
 const { width } = Dimensions.get('window');
 
 export default function MerchantHomeScreen({ navigation }) {
-  const { userInfo } = useContext(AuthContext); 
-  
+  const { userInfo } = useContext(AuthContext);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [events, setEvents] = useState([]);
-  const [stats, setStats] = useState({ 
-    totalRevenue: 0, 
-    totalSold: 0, 
-    activeCount: 0 
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalSold: 0,
+    activeCount: 0
   });
 
   const fetchMerchantData = async () => {
@@ -36,8 +36,8 @@ export default function MerchantHomeScreen({ navigation }) {
         fetch(`${API_BASE_URL}/merchant/sales`, { method: 'GET', headers })
       ]);
 
-      if (!eventsResponse.ok) console.log("❌ Events API Error:", eventsResponse.status);
-      if (!salesResponse.ok) console.log("❌ Sales API Error:", salesResponse.status);
+      if (!eventsResponse.ok) console.log("Events API Error:", eventsResponse.status);
+      if (!salesResponse.ok) console.log("Sales API Error:", salesResponse.status);
 
       let sold = 0;
       let active = 0;
@@ -57,9 +57,9 @@ export default function MerchantHomeScreen({ navigation }) {
 
       if (salesResponse.ok) {
         const salesResult = await salesResponse.json();
-        
+
         revenue = Number(salesResult.total_sales) || 0;
-        
+
       } else {
         const errorText = await salesResponse.text();
         console.warn(`⚠️ Sales Error - Status: ${salesResponse.status}`);
@@ -95,12 +95,12 @@ export default function MerchantHomeScreen({ navigation }) {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
-      
+
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
 
       <SafeAreaView style={styles.safeArea}>
-        
+
         <Header navigation={navigation} />
 
         {loading ? (
@@ -109,8 +109,8 @@ export default function MerchantHomeScreen({ navigation }) {
             <Text style={styles.loadingText}>Syncing Dashboard...</Text>
           </View>
         ) : (
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
+          <ScrollView
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00C2FF" />
@@ -129,7 +129,7 @@ export default function MerchantHomeScreen({ navigation }) {
                   <Text style={styles.statTagText}>Gross Earnings</Text>
                 </View>
               </LinearGradient>
-              
+
               <View style={styles.secondaryStatsRow}>
                 <View style={styles.smallStatCard}>
                   <Text style={styles.smallStatLabel}>TICKETS SOLD</Text>
@@ -152,17 +152,17 @@ export default function MerchantHomeScreen({ navigation }) {
 
               {events.length === 0 ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>No events found.</Text>
+                  <Text style={styles.emptyText}>No events found.</Text>
                 </View>
               ) : (
                 events.map((event) => {
-                  const progress = event.event_total_tickets > 0 
-                    ? (event.tickets_sold / event.event_total_tickets) * 100 
+                  const progress = event.event_total_tickets > 0
+                    ? (event.tickets_sold / event.event_total_tickets) * 100
                     : 0;
 
                   return (
-                    <TouchableOpacity 
-                      key={event.id?.toString() || Math.random().toString()} 
+                    <TouchableOpacity
+                      key={event.id?.toString() || Math.random().toString()}
                       style={styles.eventManageCard}
                       activeOpacity={0.9}
                       onPress={() => navigation.navigate('EventDetails', { event })}
@@ -170,7 +170,7 @@ export default function MerchantHomeScreen({ navigation }) {
                       <Image source={{ uri: event.event_image_url }} style={styles.eventThumb} />
                       <View style={styles.eventInfo}>
                         <Text style={styles.eventTitle} numberOfLines={1}>{event.event_name}</Text>
-                        
+
                         <View style={styles.progressHeader}>
                           <Text style={styles.progressLabel}>{event.tickets_sold} Ticket(s) Sold</Text>
                         </View>
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: '#4A8AAF', marginTop: 15, fontSize: 12, fontWeight: '600' },
   scrollContent: { paddingBottom: 50 },
-  
+
   businessHeader: { paddingHorizontal: 20, marginVertical: 24 },
   welcomeText: { color: '#00C2FF', fontSize: 11, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
   businessName: { color: '#FFFFFF', fontSize: 26, fontWeight: '800' },
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   statValue: { color: '#FFFFFF', fontSize: 36, fontWeight: '900' },
   statTag: { alignSelf: 'flex-start', backgroundColor: 'rgba(0, 194, 255, 0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 12 },
   statTagText: { color: '#00C2FF', fontSize: 10, fontWeight: '700' },
-  
+
   secondaryStatsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   smallStatCard: {
     width: '48%', backgroundColor: '#0B1623', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#132035',
@@ -225,20 +225,20 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   sectionTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
   refreshText: { color: '#00C2FF', fontSize: 13, fontWeight: '600' },
-  
+
   eventManageCard: {
     flexDirection: 'row', backgroundColor: '#0B1623', borderRadius: 24, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#132035', alignItems: 'center'
   },
   eventThumb: { width: 64, height: 64, borderRadius: 16, marginRight: 14, backgroundColor: '#132035' },
   eventInfo: { flex: 1 },
   eventTitle: { color: '#FFF', fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  
+
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   progressLabel: { color: '#4A8AAF', fontSize: 10, fontWeight: '600' },
   progressPercent: { color: '#00C2FF', fontSize: 10, fontWeight: '800' },
   progressBarBg: { height: 5, backgroundColor: '#132035', borderRadius: 2.5, overflow: 'hidden' },
   progressBarFill: { height: '100%', backgroundColor: '#00C2FF', borderRadius: 2.5 },
-  
+
   chevronBox: { marginLeft: 10, opacity: 0.3 },
   chevron: { color: '#FFF', fontSize: 26, fontWeight: '200' },
 

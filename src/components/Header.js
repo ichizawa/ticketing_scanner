@@ -1,8 +1,9 @@
 import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal } from 'react-native';
+import { Entypo } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
 
-export default function Header({ navigation }) {
+export default function Header({ navigation, onBack }) {
   const { logout } = useContext(AuthContext);
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
 
@@ -14,16 +15,22 @@ export default function Header({ navigation }) {
   return (
     <>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.openDrawer()} 
-          style={styles.menuBtn}
-          activeOpacity={0.7}
-        >
-          <View style={styles.menuLine} />
-          <View style={[styles.menuLine, { width: 14 }]} />
-          <View style={styles.menuLine} />
-        </TouchableOpacity>
-        
+        {onBack ? (
+          <TouchableOpacity onPress={onBack} style={styles.menuBtn} activeOpacity={0.7}>
+            <Text style={styles.backArrow}>‹</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => navigation.openDrawer()}
+            style={styles.menuBtn}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLine} />
+            <View style={[styles.menuLine, { width: 14 }]} />
+            <View style={styles.menuLine} />
+          </TouchableOpacity>
+        )}
+
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
             <Text style={styles.headerMedia}>MediaOne</Text>
@@ -46,21 +53,21 @@ export default function Header({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalIconBox}>
-              <Text style={styles.modalIcon}>✅</Text>
+              <Entypo name="log-out" color="#FF4D6A" size={28} />
             </View>
             <Text style={styles.modalTitle}>Confirm Logout</Text>
-            <Text style={styles.modalMessage}>Are you sure you want to log out of the Merchant Portal?</Text>
-            
+            <Text style={styles.modalMessage}>Are you sure you want to log out?</Text>
+
             <View style={styles.modalButtonRow}>
-              <TouchableOpacity 
-                style={styles.modalCancelBtn} 
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
                 onPress={() => setLogoutModalVisible(false)}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.modalLogoutBtn} 
+
+              <TouchableOpacity
+                style={styles.modalLogoutBtn}
                 onPress={confirmLogout}
               >
                 <Text style={styles.modalLogoutText}>Logout</Text>
@@ -81,10 +88,12 @@ const styles = StyleSheet.create({
   },
   menuBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start', gap: 5 },
   menuLine: { width: 24, height: 2.5, backgroundColor: '#FFFFFF', borderRadius: 2 },
+  backArrow: { color: '#FFFFFF', fontSize: 30, fontWeight: '300', marginLeft: 2, lineHeight: 36 },
+  headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 20 },
   headerMedia: { color: '#FFFFFF', fontWeight: '600' },
   headerTix: { color: '#00C2FF', fontWeight: '800' },
-  profileBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#132035', padding: 2 },
+  profileBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
   profileAvatar: { flex: 1, borderRadius: 17, backgroundColor: '#4A8AAF', opacity: 0.8 },
 
   // Modal Styles

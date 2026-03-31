@@ -7,6 +7,7 @@ import { Entypo, MaterialIcons } from '@expo/vector-icons'
 import React, { useState, useRef, useEffect, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
+import Header from '../../components/Header'
 
 const { width, height } = Dimensions.get('window')
 
@@ -151,22 +152,7 @@ export default function PurchaseScreen({ navigation, route }) {
     // --- Sub-renderers ---
 
     const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-                <View style={styles.menuLine} />
-                <View style={[styles.menuLine, { width: 14 }]} />
-                <View style={styles.menuLine} />
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-                <Text style={styles.headerBranding}>
-                    <Text style={styles.headerMedia}>MediaOne</Text>
-                    <Text style={styles.headerTix}>Tix</Text>
-                </Text>
-            </View>
-            <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-                <View style={styles.profileAvatar} />
-            </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} />
     );
 
     const renderArtistCard = ({ item }) => {
@@ -256,7 +242,7 @@ export default function PurchaseScreen({ navigation, route }) {
 
             {/* Seating Chart */}
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>SEATING CHART</Text>
+                <Text style={styles.sectionTitle}>SEATING PLAN</Text>
             </View>
             <TouchableOpacity
                 activeOpacity={0.9}
@@ -264,9 +250,6 @@ export default function PurchaseScreen({ navigation, route }) {
                 onPress={() => setIsMapVisible(true)}
             >
                 <Image source={{ uri: SEAT_MAP_URL }} style={styles.seatMapImage} />
-                <View style={styles.mapOverlay}>
-                    <Text style={styles.mapHint}>Tap to Zoom Seating Chart</Text>
-                </View>
             </TouchableOpacity>
 
             {/* Tier Selection */}
@@ -602,14 +585,14 @@ export default function PurchaseScreen({ navigation, route }) {
             </SafeAreaView>
 
             {/* Seat Map Modal */}
-            <Modal visible={isMapVisible} transparent animationType="fade">
+            <Modal visible={isMapVisible} 
+            transparent 
+            animationType="fade">
                 <View style={styles.modalBg}>
                     <TouchableOpacity style={styles.modalClose} onPress={() => setIsMapVisible(false)}>
-                        <Text style={styles.modalCloseText}>CLOSE</Text>
+                        <Text style={styles.modalCloseText}>✕ CLOSE</Text>
                     </TouchableOpacity>
-                    <Image source={{ uri: SEAT_MAP_URL }} style={styles.modalImage} resizeMode="contain" />
-                    <Text style={styles.modalHint}>Pinch to zoom Seating Map</Text>
-                </View>
+                    <Image source={{ uri: SEAT_MAP_URL }} style={styles.modalImage} resizeMode="contain" />                </View>
             </Modal>
         </View>
     );

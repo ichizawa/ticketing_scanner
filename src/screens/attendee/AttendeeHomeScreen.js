@@ -5,6 +5,7 @@ import React, { useState, useContext, useRef, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AuthContext } from '../../context/AuthContext'
+import Header from '../../components/Header'
 
 const { width } = Dimensions.get('window')
 
@@ -46,7 +47,7 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     const interval = setInterval(() => {
       let nextIndex = activeIndex + 1;
-      
+
       scrollRef.current?.scrollTo({
         x: nextIndex * width,
         animated: true,
@@ -89,23 +90,6 @@ export default function HomeScreen({ navigation }) {
     setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id])
   }
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', onPress: () => {} },
-        {
-          text: 'Logout',
-          onPress: () => {
-            logout();
-          },
-          style: 'destructive'
-        }
-      ]
-    )
-  }
-
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
@@ -113,31 +97,15 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.bgOrb2} />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-            <View style={styles.profileAvatar} />
-          </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          
+
           {/* Hero Carousel */}
-          <ScrollView 
+          <ScrollView
             ref={scrollRef}
-            horizontal 
-            pagingEnabled 
+            horizontal
+            pagingEnabled
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={handleScroll}
             contentOffset={{ x: width, y: 0 }} // Start at first real item
@@ -153,12 +121,12 @@ export default function HomeScreen({ navigation }) {
                     <View style={styles.heroTag}><Text style={styles.heroTagText}>{event.genre}</Text></View>
                     <Text style={styles.heroTitle}>{event.title}</Text>
                     <Text style={styles.heroSubtitle}>{event.desc}</Text>
-                    
-                    <TouchableOpacity 
-                        style={styles.heroFab}
-                        onPress={() => navigation.navigate('CustomerPurchase', { event })}
+
+                    <TouchableOpacity
+                      style={styles.heroFab}
+                      onPress={() => navigation.navigate('CustomerPurchase', { event })}
                     >
-                        <Text style={styles.heroFabText}>Get Tickets Now</Text>
+                      <Text style={styles.heroFabText}>Get Tickets Now</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                 </ImageBackground>
@@ -172,27 +140,27 @@ export default function HomeScreen({ navigation }) {
             {DON_MISS.map(item => (
               <View key={item.id} style={styles.verticalCard}>
                 <View style={styles.vCardTop}>
-                    <Image source={{ uri: item.image }} style={styles.vCardImg} />
-                    <TouchableOpacity 
-                        style={styles.heartBtn} 
-                        onPress={() => toggleFavorite(item.id)}
-                    >
-                        <Text style={styles.heartIcon}>{favorites.includes(item.id) ? '❤️' : '🤍'}</Text>
-                    </TouchableOpacity>
-                    <View style={styles.vGenreTag}><Text style={styles.vGenreText}>{item.genre}</Text></View>
+                  <Image source={{ uri: item.image }} style={styles.vCardImg} />
+                  <TouchableOpacity
+                    style={styles.heartBtn}
+                    onPress={() => toggleFavorite(item.id)}
+                  >
+                    <Text style={styles.heartIcon}>{favorites.includes(item.id) ? '❤️' : '🤍'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.vGenreTag}><Text style={styles.vGenreText}>{item.genre}</Text></View>
                 </View>
                 <View style={styles.vCardBottom}>
-                    <View style={styles.vCardLeft}>
-                        <Text style={styles.vCardTitle} numberOfLines={1}>{item.title}</Text>
-                        <Text style={styles.vCardLoc}>{item.venue}</Text>
-                        <Text style={styles.vCardDate}>{item.time}</Text>
-                    </View>
-                    <TouchableOpacity 
-                        style={styles.vCardBuyBtn}
-                        onPress={() => navigation.navigate('CustomerPurchase', { event: item })}
-                    >
-                        <Text style={styles.vCardBuyText}>Get Tickets</Text>
-                    </TouchableOpacity>
+                  <View style={styles.vCardLeft}>
+                    <Text style={styles.vCardTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.vCardLoc}>{item.venue}</Text>
+                    <Text style={styles.vCardDate}>{item.time}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.vCardBuyBtn}
+                    onPress={() => navigation.navigate('CustomerPurchase', { event: item })}
+                  >
+                    <Text style={styles.vCardBuyText}>Get Tickets</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))}
@@ -201,8 +169,8 @@ export default function HomeScreen({ navigation }) {
           {/* Explore Events */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Explore Events</Text>
-                <TouchableOpacity><Text style={styles.seeMoreBtn}>View More</Text></TouchableOpacity>
+              <Text style={styles.sectionTitle}>Explore Events</Text>
+              <TouchableOpacity><Text style={styles.seeMoreBtn}>View More</Text></TouchableOpacity>
             </View>
             {REFINED_EXPLORE.map(item => (
               <TouchableOpacity key={item.id} style={styles.listCard}>
@@ -278,20 +246,20 @@ const styles = StyleSheet.create({
   heroCard: { width: width, height: 500 },
   heroBg: { flex: 1 },
   heroOverlay: { flex: 1, padding: 24, justifyContent: 'flex-end' },
-  heroTag: { 
-    alignSelf: 'flex-start', backgroundColor: '#00C2FF', 
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 12 
+  heroTag: {
+    alignSelf: 'flex-start', backgroundColor: '#00C2FF',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 12
   },
   heroTagText: { color: '#000', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   heroTitle: { color: '#FFF', fontSize: 38, fontWeight: '900', letterSpacing: -1, marginBottom: 8, lineHeight: 40, width: '75%' },
   heroSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: '500', marginBottom: 24, width: '70%', lineHeight: 22 },
-  heroFab: { 
+  heroFab: {
     // position: 'absolute', bottom: 1, right: 257,
     alignSelf: 'flex-start',
     backgroundColor: '#FFF', paddingHorizontal: 22, paddingVertical: 14, borderRadius: 16,
     shadowColor: '#FFF', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10
   },
-  heroFabText: { color: '#000', fontWeight: '800', fontSize: 13,  },
+  heroFabText: { color: '#000', fontWeight: '800', fontSize: 13, },
   // Sections
   section: { marginBottom: 32, paddingHorizontal: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -299,15 +267,15 @@ const styles = StyleSheet.create({
   seeMoreBtn: { color: '#00C2FF', fontSize: 13, fontWeight: '700', marginBottom: 20 },
 
   // Vertical Cards (Don't Miss)
-  verticalCard: { 
-    height: 340, backgroundColor: '#0B1623', borderRadius: 24, 
-    marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#132035' 
+  verticalCard: {
+    height: 340, backgroundColor: '#0B1623', borderRadius: 24,
+    marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#132035'
   },
   vCardTop: { height: '70%', position: 'relative' },
   vCardImg: { ...StyleSheet.absoluteFillObject },
-  heartBtn: { 
-    position: 'absolute', top: 16, right: 16, 
-    backgroundColor: 'rgba(0,0,0,0.3)', width: 40, height: 40, 
+  heartBtn: {
+    position: 'absolute', top: 16, right: 16,
+    backgroundColor: 'rgba(0,0,0,0.3)', width: 40, height: 40,
     borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
   },
   heartIcon: { fontSize: 18 },
@@ -321,7 +289,7 @@ const styles = StyleSheet.create({
   vCardTitle: { color: '#FFF', fontSize: 18, fontWeight: '800', marginBottom: 4 },
   vCardLoc: { color: '#4A8AAF', fontSize: 12, fontWeight: '600' },
   vCardDate: { color: '#3D6080', fontSize: 11, fontWeight: '500' },
-  vCardBuyBtn: { 
+  vCardBuyBtn: {
     backgroundColor: '#00C2FF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
     shadowColor: '#00C2FF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4
   },

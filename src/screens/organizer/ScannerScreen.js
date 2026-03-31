@@ -5,6 +5,7 @@ import {
 import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import Header from '../../components/Header';
 
 const { width, height } = Dimensions.get('window')
 const SCANNER_SIZE = width * 0.72
@@ -197,27 +198,12 @@ export default function ScannerScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeArea}>
 
-        <Animated.View style={[styles.header, { opacity: headerFade }]}>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              <Text style={styles.headerMedia}>MediaOne</Text>
-              <Text style={styles.headerTix}>Tix</Text>
-            </Text>
-            <View style={styles.liveIndicator}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
+        <Animated.View style={[{ opacity: headerFade }]}>
+          <Header navigation={navigation} />
+          <View style={styles.liveRow}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={[styles.menuLine, { width: 14 }]} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
         </Animated.View>
 
         <Animated.View style={[
@@ -388,13 +374,7 @@ const styles = StyleSheet.create({
 
   safeArea: { flex: 1 },
 
-  // Header
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { color: '#4A8AAF', fontSize: 20 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBottom: 8 },
   headerCenter: { alignItems: 'center' },
   headerTitle: { fontSize: 20 },
   headerMedia: { color: '#FFFFFF', fontWeight: '600' },
