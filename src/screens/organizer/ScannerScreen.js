@@ -2,97 +2,231 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   Animated, Dimensions, StatusBar
 } from 'react-native'
-import React, { useEffect, useRef, useState, useContext } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
+import NetInfo from '@react-native-community/netinfo'
+import { useIsFocused } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import Header from '../../components/Header';
+import { CameraView, useCameraPermissions } from 'expo-camera'
+import Header from '../../components/Header'
+import { API_BASE_URL } from '../../config'
+import { AuthContext } from '../../context/AuthContext'
 
 const { width, height } = Dimensions.get('window')
 const SCANNER_SIZE = width * 0.72
 
-// Mock scan result data
-const MOCK_VALID = {
-  status: 'valid',
-  name: 'Jordan Reyes',
-  event: 'MediaOne Summer Fest 2025',
-  ticket: 'VIP — GA Floor',
-  seat: 'Section A · Row 4 · Seat 12',
-  time: '7:00 PM',
-  id: 'M1T-00482-VIP',
-}
-const MOCK_INVALID = {
-  status: 'invalid',
-  name: 'Unknown',
-  event: '—',
-  ticket: '—',
-  seat: '—',
-  time: '—',
-  id: 'M1T-99999-ERR',
-}
-const MOCK_USED = {
-  status: 'used',
-  name: 'Alex Kim',
-  event: 'MediaOne Summer Fest 2025',
-  ticket: 'General Admission',
-  seat: 'Section C · Open Floor',
-  time: '7:00 PM',
-  id: 'M1T-00219-GA',
-  scannedAt: '6:42 PM',
-}
-
 export default function ScannerScreen({ navigation }) {
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const device = useCameraDevice('back');
-
-  useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-  }, [hasPermission, requestPermission]);
-
+  const isFocused = useIsFocused()
+  const { userInfo } = useContext(AuthContext)
+  const [permission, requestPermission] = useCameraPermissions()
   const [scanResult, setScanResult] = useState(null)
   const [resultData, setResultData] = useState(null)
   const [isScanning, setIsScanning] = useState(true)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isConnected, setIsConnected] = useState(true)
   const [scanCount, setScanCount] = useState(0)
   const [successCount, setSuccessCount] = useState(0)
+  const [lastScannedValue, setLastScannedValue] = useState(null)
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', onPress: () => {} },
-        {
-          text: 'Logout',
-          onPress: () => {
-            logout();
-          },
-          style: 'destructive'
-        }
-      ]
-    )
+  const extractRefNumber = (rawValue) => {
+    if (!rawValue) return null
+    const text = String(rawValue).trim()
+    try {
+      const parsed = JSON.parse(text)
+      return (
+        parsed?.refNumber ??
+        parsed?.ref_number ??
+        parsed?.referenceNumber ??
+        parsed?.reference_number ??
+        parsed?.ticketId ??
+        parsed?.ticket_id ??
+        parsed?.id ??
+        text
+      )
+    } catch (error) {
+      const matchedValue = text.match(/(?:refNumber|ref_number|referenceNumber|reference_number|ticketId|ticket_id|id)[=/:]([^&/\s]+)/i)
+      return matchedValue?.[1] ? decodeURIComponent(matchedValue[1]) : text
+    }
   }
 
-  // Animations
+  const getPayloadStatus = (payload, httpStatus = 200) => {
+    const combinedText = [
+      payload?.status,
+      payload?.message,
+      payload?.error,
+      payload?.ticket?.status,
+      payload?.data?.status,
+      payload?.data?.ticket?.status,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    const wasScanned =
+      payload?.ticket?.is_scanned ??
+      payload?.data?.ticket?.is_scanned ??
+      payload?.data?.is_scanned ??
+      payload?.is_scanned ??
+      payload?.is_redeemed
+      
+    if (wasScanned || combinedText.includes('already scanned') || combinedText.includes('already used') || combinedText.includes('used')) {
+      return 'used'
+    }
+
+    if (
+      httpStatus !== 200 ||
+      combinedText.includes('invalid') ||
+      combinedText.includes('not found') ||
+      combinedText.includes('expired') ||
+      combinedText.includes('denied') ||
+      combinedText.includes('not yet paid') ||
+      combinedText.includes('disabled')
+    ) {
+      return 'invalid'
+    }
+    return 'valid'
+  }
+
+  const buildResultFromApi = (payload, refNumber, forcedStatus = null) => {
+    const status = forcedStatus ?? getPayloadStatus(payload);
+    const data = payload?.data ?? payload ?? {};
+    const ticketDetails = data?.ticket ?? {};
+    const eventDetails = data?.event ?? {};
+
+    const formatDateTime = (dateInput) => {
+      if (!dateInput) return null;
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return String(dateInput);
+
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+
+      return `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}`;
+    };
+
+    const currentFormattedTime = formatDateTime(new Date());
+    const dbFormattedTime = formatDateTime(ticketDetails?.updated_at);
+    let noteText = payload?.message ?? payload?.error ?? null;
+
+    if (typeof noteText === 'string' && (noteText.includes('The route') || noteText.includes('api/'))) {
+      noteText = 'Unrecognized or invalid QR code format.';
+    }
+
+    return {
+      status,
+      name: data?.customer_name ?? ticketDetails?.customer_name ?? 'Unknown Guest',
+      ticket: data?.type ?? ticketDetails?.type ?? 'Standard Ticket',
+      event: eventDetails?.event_name ?? eventDetails?.event_title ?? 'Event Unspecified',
+      seat: data?.seat ?? ticketDetails?.seat ?? 'General Admission',
+      time: eventDetails?.time ?? data?.time ?? '—',
+      id: refNumber,
+      scannedAt: status === 'valid' ? currentFormattedTime : (dbFormattedTime ?? currentFormattedTime),
+      note: noteText,
+    }
+  }
+
+  const verifyAndScanTicket = async (rawValue) => {
+    const refNumber = extractRefNumber(rawValue)
+    if (!refNumber) {
+      showResult({ status: 'invalid', event: 'QR code unreadable', id: 'NO-REF' })
+      return
+    }
+
+    if (!isConnected) {
+      showResult({
+        status: 'invalid',
+        event: 'No internet connection',
+        ticket: 'Reconnect to validate',
+        id: refNumber,
+      })
+      return
+    }
+
+    if (!userInfo?.token) {
+      showResult({
+        status: 'invalid',
+        event: 'Staff session expired',
+        ticket: 'Please log in again',
+        id: refNumber,
+      })
+      return
+    }
+
+    setIsScanning(false)
+    setIsVerifying(true)
+
+    try {
+      const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${userInfo.token}`,
+      }
+
+      const checkResponse = await fetch(
+        `${API_BASE_URL}/staff/scan/check-ticket/${encodeURIComponent(refNumber)}`,
+        { method: 'GET', headers }
+      )
+      const checkPayload = await checkResponse.json().catch(() => ({}))
+      const checkStatus = getPayloadStatus(checkPayload, checkResponse.status)
+
+      if (!checkResponse.ok || checkStatus !== 'valid') {
+        showResult(buildResultFromApi(checkPayload, refNumber, checkStatus === 'valid' ? 'invalid' : checkStatus))
+        return
+      }
+
+      const scanResponse = await fetch(
+        `${API_BASE_URL}/staff/scan/ticket/${encodeURIComponent(refNumber)}`,
+        { method: 'GET', headers }
+      )
+
+      const scanPayload = await scanResponse.json().catch(() => ({}))
+      const scanStatus = getPayloadStatus(scanPayload, scanResponse.status)
+      showResult(buildResultFromApi(checkPayload, refNumber, scanStatus))
+    } catch (error) {
+      console.log('Ticket scan error:', error)
+      showResult({
+        status: 'invalid',
+        event: 'Verification failed',
+        ticket: 'Could not reach scanner API',
+        id: refNumber,
+      })
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleBarcodeScanned = ({ data }) => {
+    if (!data || !isScanning || isVerifying || data === lastScannedValue) return
+    setLastScannedValue(data)
+    verifyAndScanTicket(data)
+  }
+
   const scanLineAnim = useRef(new Animated.Value(0)).current
   const pulseAnim = useRef(new Animated.Value(1)).current
   const resultSlide = useRef(new Animated.Value(300)).current
   const resultOpacity = useRef(new Animated.Value(0)).current
   const overlayOpacity = useRef(new Animated.Value(0)).current
   const cornerGlow = useRef(new Animated.Value(0)).current
-  const headerFade = useRef(new Animated.Value(0)).current
   const statsSlide = useRef(new Animated.Value(-30)).current
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.spring(statsSlide, { toValue: 0, friction: 8, useNativeDriver: true }),
     ]).start()
   }, [])
 
   useEffect(() => {
-    if (!isScanning) return
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(Boolean(state.isConnected))
+    })
+    return () => unsubscribe()
+  }, [])
 
+  useEffect(() => {
+    if (!isScanning) return
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineAnim, { toValue: 1, duration: 2200, useNativeDriver: true }),
@@ -143,6 +277,8 @@ export default function ScannerScreen({ navigation }) {
       setScanResult(null)
       setResultData(null)
       setIsScanning(true)
+      setIsVerifying(false)
+      setLastScannedValue(null)
       scanLineAnim.setValue(0)
     })
   }
@@ -168,48 +304,49 @@ export default function ScannerScreen({ navigation }) {
 
   const statusConfig = scanResult ? getStatusConfig(scanResult) : null
 
-  // Early returns if permissions or device aren't ready yet
-  if (!hasPermission) {
-    return (
-      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: '#3D6080' }}>Waiting for camera permission...</Text>
-      </View>
-    );
+  if (!permission) {
+    return <View style={styles.root} />
   }
 
-  if (device == null) {
+  if (!permission.granted) {
     return (
-      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: '#FF4D6A' }}>No camera device found.</Text>
+      <View style={[styles.root, styles.permissionWrapper]}>
+        <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+        <SafeAreaView style={styles.permissionSafeArea}>
+          <Header navigation={navigation} />
+          <View style={styles.permissionCard}>
+            <Text style={styles.permissionTitle}>Camera access needed</Text>
+            <Text style={styles.permissionText}>
+              Allow camera permission so the app can scan and read ticket QR codes.
+            </Text>
+            <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+              <Text style={styles.permissionBtnText}>Grant Permission</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
-    );
+    )
   }
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
-
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
-
       {[...Array(6)].map((_, i) => (
         <View key={i} style={[styles.gridLine, { top: (height / 6) * i }]} />
       ))}
-
       <SafeAreaView style={styles.safeArea}>
+        <Header navigation={navigation} />
 
-        <Animated.View style={[{ opacity: headerFade }]}>
-          <Header navigation={navigation} />
-          <View style={styles.liveRow}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
+        {!isConnected && (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineBannerTitle}>OFFLINE</Text>
+            <Text style={styles.offlineBannerText}>Connect to the internet to verify and scan tickets.</Text>
           </View>
-        </Animated.View>
+        )}
 
-        <Animated.View style={[
-          styles.statsBar,
-          { transform: [{ translateY: statsSlide }], opacity: headerFade }
-        ]}>
+        <Animated.View style={[styles.statsBar]}>
           {[
             { value: scanCount, label: 'SCANNED', color: '#FFFFFF' },
             { value: successCount, label: 'VALID', color: '#00E5A0' },
@@ -228,19 +365,20 @@ export default function ScannerScreen({ navigation }) {
 
         <View style={styles.scannerArea}>
           <Text style={styles.scanPrompt}>
-            {isScanning ? 'Point camera at ticket QR code' : 'Processing...'}
+            {isVerifying ? 'Checking ticket with server...' : isScanning ? 'Point camera at ticket QR code' : 'Processing...'}
           </Text>
 
           <View style={styles.scannerFrame}>
-            <Camera
-              style={StyleSheet.absoluteFill}
-              device={device}
-              isActive={isScanning}
-              onFrameProcessor={(frame) => {
-                // will add QR detection later
-              }}
-            />
+            {isFocused && (
+              <CameraView
+                style={StyleSheet.absoluteFillObject}
+                facing="back"
+                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                onBarcodeScanned={isScanning ? handleBarcodeScanned : undefined}
+              />
+            )}
 
+            <View style={styles.cameraShade} />
             <Animated.View style={[styles.scanLine, { transform: [{ translateY: scanLineY }] }]}>
               <View style={styles.scanLineBar} />
               <View style={styles.scanLineGlow} />
@@ -258,23 +396,36 @@ export default function ScannerScreen({ navigation }) {
         </View>
 
         <View style={styles.controls}>
-          <TouchableOpacity style={styles.ctrlBtn} onPress={() => showResult(MOCK_USED)}>
-            <Text style={styles.ctrlIcon}>⏱</Text>
-            <Text style={styles.ctrlLabel}>USED</Text>
+          <TouchableOpacity
+            style={styles.ctrlBtn}
+            onPress={() => {
+              setLastScannedValue(null)
+              setIsScanning(true)
+              setIsVerifying(false)
+            }}
+          >
+            <Text style={styles.ctrlIcon}>↺</Text>
+            <Text style={styles.ctrlLabel}>RESET</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.mainScanBtn} onPress={() => showResult(MOCK_VALID)}>
+          <TouchableOpacity
+            style={styles.mainScanBtn}
+            onPress={() => {
+              setLastScannedValue(null)
+              setIsScanning(true)
+            }}
+          >
             <View style={styles.mainScanRing}>
               <View style={styles.mainScanCore}>
                 <Text style={styles.mainScanIcon}>◈</Text>
-                <Text style={styles.mainScanLabel}>SCAN</Text>
+                <Text style={styles.mainScanLabel}>{isVerifying ? 'WAIT' : 'LIVE'}</Text>
               </View>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.ctrlBtn} onPress={() => showResult(MOCK_INVALID)}>
-            <Text style={styles.ctrlIcon}>✕</Text>
-            <Text style={styles.ctrlLabel}>DENY</Text>
+          <TouchableOpacity style={styles.ctrlBtn} onPress={dismissResult}>
+            <Text style={styles.ctrlIcon}>✓</Text>
+            <Text style={styles.ctrlLabel}>NEXT</Text>
           </TouchableOpacity>
         </View>
 
@@ -295,36 +446,33 @@ export default function ScannerScreen({ navigation }) {
             { transform: [{ translateY: resultSlide }], opacity: resultOpacity },
             { borderTopColor: statusConfig?.borderColor + '60' },
           ]}>
-            <View style={[styles.resultHeader, { backgroundColor: statusConfig?.bg }]}>
-              <View style={[styles.resultIconRing, { borderColor: statusConfig?.color }]}>
-                <Text style={[styles.resultIconText, { color: statusConfig?.color }]}>
-                  {statusConfig?.icon}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.resultStatusLabel, { color: statusConfig?.color }]}>
-                  {statusConfig?.label}
-                </Text>
-                <Text style={styles.resultIdText}>{resultData?.id}</Text>
-              </View>
-              <TouchableOpacity onPress={dismissResult} style={styles.closeBtn}>
-                <Text style={styles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
 
             <View style={styles.resultBody}>
+              <View style={styles.resultTopRow}>
+                <View style={[
+                  styles.resultIconRing,
+                  { borderColor: statusConfig?.color, backgroundColor: `${statusConfig?.color}15` },
+                ]}>
+                  <Text style={[styles.resultIconText, { color: statusConfig?.color }]}>{statusConfig?.icon}</Text>
+                </View>
+
+                <View style={styles.resultHeading}>
+                  <Text style={[styles.resultStatusLabel, { color: statusConfig?.color }]}>{statusConfig?.label}</Text>
+                  {!!resultData?.note && <Text style={styles.resultMetaText}>{resultData.note}</Text>}
+                </View>
+              </View>
+
               <Text style={styles.attendeeName}>{resultData?.name}</Text>
               <Text style={styles.eventName}>{resultData?.event}</Text>
+              <Text style={styles.resultIdText}>Ticket ID: {resultData?.id}</Text>
 
               <View style={styles.bodyDivider} />
 
               <View style={styles.infoGrid}>
                 {[
                   { label: 'TICKET TYPE', value: resultData?.ticket },
-                  { label: 'SHOW TIME', value: resultData?.time },
-                  { label: 'SEAT', value: resultData?.seat },
                   resultData?.scannedAt
-                    ? { label: 'FIRST SCANNED', value: resultData.scannedAt, highlight: '#FFB84D' }
+                    ? { label: 'FIRST SCANNED', value: resultData.scannedAt, highlight: '#ffffff' }
                     : null,
                 ].filter(Boolean).map((item) => (
                   <View key={item.label} style={styles.infoCell}>
@@ -345,7 +493,7 @@ export default function ScannerScreen({ navigation }) {
                 onPress={dismissResult}
               >
                 <Text style={styles.ctaBtnText}>
-                  {scanResult === 'valid' ? 'ADMIT GUEST  →' : 'SCAN NEXT  →'}
+                  {scanResult === 'valid' ? 'ADMIT GUEST  >' : 'SCAN NEXT  >'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -373,19 +521,63 @@ const styles = StyleSheet.create({
   },
 
   safeArea: { flex: 1 },
+  permissionWrapper: { justifyContent: 'center' },
+  permissionSafeArea: { flex: 1 },
+  permissionCard: {
+    marginHorizontal: 20,
+    marginTop: 32,
+    padding: 24,
+    borderRadius: 18,
+    backgroundColor: '#0B1623',
+    borderWidth: 1,
+    borderColor: '#132035',
+  },
+  permissionTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  permissionText: {
+    color: '#7E97B3',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  permissionBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#00C2FF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  permissionBtnText: {
+    color: '#050A14',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 
-  liveRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBottom: 8 },
-  headerCenter: { alignItems: 'center' },
-  headerTitle: { fontSize: 20 },
-  headerMedia: { color: '#FFFFFF', fontWeight: '600' },
-  headerTix: { color: '#00C2FF', fontWeight: '800' },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#00E5A0' },
-  liveText: { color: '#00E5A0', fontSize: 9, fontWeight: '700', letterSpacing: 2 },
-  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  menuLine: { width: 18, height: 1.5, backgroundColor: '#4A8AAF', borderRadius: 1 },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
-  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
+  offlineBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#3B1118',
+    borderWidth: 1,
+    borderColor: '#6D2430',
+  },
+  offlineBannerTitle: {
+    color: '#FFD5DB',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 2,
+  },
+  offlineBannerText: {
+    color: '#FFB7C2',
+    fontSize: 12,
+  },
 
   // Stats
   statsBar: {
@@ -405,7 +597,13 @@ const styles = StyleSheet.create({
   scannerFrame: {
     width: SCANNER_SIZE, height: SCANNER_SIZE,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    position: 'relative', 
+    position: 'relative',
+    backgroundColor: '#09111D',
+    borderRadius: 22,
+  },
+  cameraShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5,10,20,0.14)',
   },
 
   corner: { position: 'absolute', width: 28, height: 28 },
@@ -485,16 +683,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5, shadowRadius: 24, elevation: 20,
   },
 
-  resultHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 20, gap: 14,
+  resultTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
   },
+  resultHeading: { flex: 1 },
   resultIconRing: {
     width: 48, height: 48, borderRadius: 24,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
   resultIconText: { fontSize: 20, fontWeight: '800' },
   resultStatusLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  resultMetaText: { color: '#7E97B3', fontSize: 11, marginTop: 4 },
   resultIdText: { color: '#3D6080', fontSize: 11, fontWeight: '500', marginTop: 2, letterSpacing: 1 },
   closeBtn: { padding: 8 },
   closeBtnText: { color: '#3D6080', fontSize: 14 },

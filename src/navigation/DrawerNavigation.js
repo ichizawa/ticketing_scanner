@@ -2,9 +2,6 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useContext } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-// Example Icon import - you can uncomment and use your own vector icons (e.g., Ionicons, MaterialIcons)
-// import Icon from 'react-native-vector-icons/Ionicons'; 
-
 import ScannerScreen from "../screens/organizer/ScannerScreen";
 import HomeScreen from "../screens/attendee/AttendeeHomeScreen";
 import MerchantHomeScreen from "../screens/merchant/MerchantHomeScreen";

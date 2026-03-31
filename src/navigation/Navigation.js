@@ -14,7 +14,7 @@ export default function Navigation() {
 
     // Check if user is a merchant (handle different API response structures)
     const userRole = userInfo?.role || userInfo?.user?.role || userInfo?.type;
-    const isMerchant = userRole === 'merchant' || userRole === 'admin';
+    const isMerchant = userRole === 'staff' || userRole === 'admin';
 
     console.log('User Info:', userInfo);
     console.log('User Role:', userRole);
