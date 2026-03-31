@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   primaryActionCard: {
-    backgroundColor: 'rgba(0, 194, 255, 0.1)', // Tinted with your cyan
+    backgroundColor: 'rgba(0, 194, 255, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(0, 194, 255, 0.3)',
     borderRadius: 16,
@@ -174,7 +174,6 @@ const styles = StyleSheet.create({
     color: '#8A94A6',
     fontSize: 14,
   },
-  // Decorative backgrounds kept from original style
   bgOrb1: {
     position: 'absolute', 
     width: 320, 

@@ -1,7 +1,4 @@
-import {
-  StyleSheet, Text, View, TouchableOpacity,
-  Dimensions, StatusBar, ScrollView, Animated, Alert
-} from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Animated } from 'react-native'
 import React, { useEffect, useRef, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
@@ -63,20 +60,8 @@ export default function EventScreen({ navigation }) {
     },
   ];
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', onPress: () => { } },
-        {
-          text: 'Logout',
-          onPress: () => logout(),
-          style: 'destructive'
-        }
-      ]
-    );
-  };
+  const handleLogout = () => logout();
+
 
   // ---------------------------------------
   // Ticket Report Screen (FULL PAGE)
@@ -89,7 +74,8 @@ export default function EventScreen({ navigation }) {
     return (
       <View style={{ flex: 1 }}>
         <SafeAreaView style={styles.safeArea}>
-          
+          <Header navigation={navigation} onBack={onBack} />
+
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {/* Hero Box */}
             <View style={styles.eventHeroBox}>

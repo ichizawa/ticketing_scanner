@@ -1,12 +1,9 @@
-import {
-    StyleSheet, Text, View, TouchableOpacity, ScrollView,
-    Animated, Dimensions, StatusBar, Image, Alert, Platform,
-    FlatList, Modal
-} from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Dimensions, StatusBar, Image, Platform, FlatList, Modal } from 'react-native'
 import React, { useState, useRef, useEffect, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
 import { BlurView } from 'expo-blur'
+import Header from '../../components/Header'
 
 const { width, height } = Dimensions.get('window')
 
@@ -91,22 +88,7 @@ export default function HistoryScreen({ navigation }) {
     const filteredData = PURCHASE_HISTORY.filter(item => item.status === activeTab);
 
     const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation?.toggleDrawer?.()} style={styles.menuBtn}>
-                <View style={styles.menuLine} />
-                <View style={[styles.menuLine, { width: 14 }]} />
-                <View style={styles.menuLine} />
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-                <Text style={styles.headerBranding}>
-                    <Text style={styles.headerMedia}>MediaOne</Text>
-                    <Text style={styles.headerTix}>Tix</Text>
-                </Text>
-            </View>
-            <TouchableOpacity onPress={handleLogout} style={styles.profileBtn}>
-                <View style={styles.profileAvatar} />
-            </TouchableOpacity>
-        </View>
+        <Header navigation={navigation} />
     );
 
     const renderTabs = () => (

@@ -1,347 +1,414 @@
 import React, { useState, useEffect, useContext } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Dimensions,
-  ActivityIndicator,
-  Platform
-} from 'react-native';
+import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity, StatusBar, Dimensions, ActivityIndicator, ImageBackground, Platform, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import { Foundation } from '@expo/vector-icons';
+import Header from '../../components/Header';
 import { AuthContext } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
 
-const { width } = Dimensions.get('window');
-
-const getStatusConfig = (statusCode) => {
-  switch (statusCode) {
-    case 0: return { label: '• UPCOMING', pillStyle: styles.upcomingPill, textStyle: styles.upcomingText };
-    case 1: return { label: '• ACTIVE', pillStyle: styles.activePill, textStyle: styles.activeText };
-    case 2: return { label: '• ONGOING', pillStyle: styles.ongoingPill, textStyle: styles.ongoingText };
-    case 3: return { label: '• COMPLETED', pillStyle: styles.completedPill, textStyle: styles.completedText };
-    default: return { label: '• CANCELLED', pillStyle: styles.cancelPill, textStyle: styles.cancelText };
+const { width, height } = Dimensions.get('window');
+const formatTime = (time) => {
+  if (!time) return 'TBA';
+  try {
+    const parts = time.split(':');
+    if (parts.length < 2) return time;
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  } catch (e) {
+    return time;
   }
 };
 
+const getStatusColor = (status) => {
+  const s = String(status || '').toUpperCase();
+  if (s === 'LIVE' || s === 'ACTIVE' || s === 'ON LIVE') return '#00E5A0';
+  if (s === 'COMPLETED' || s === 'DONE LIVE' || s === 'PAST') return '#3D6080';
+  return '#00C2FF';
+};
+
+const TIER_COLORS = ['#a7d2fa', '#FFD700', '#E5E4E2', '#B87333', '#00E5A0', '#00C2FF'];
+
+const BgDecor = () => (
+  <>
+    <View style={styles.bgOrb1} />
+    <View style={styles.bgOrb2} />
+    {[...Array(5)].map((_, i) => (
+      <View key={i} style={[styles.gridLine, { top: width * 0.4 * i }]} />
+    ))}
+  </>
+);
+
 export default function EventDetailsScreen({ route, navigation }) {
   const { event } = route.params;
-  
-  const { userInfo } = useContext(AuthContext);
+  const { userInfo, logout } = useContext(AuthContext);
+
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [isMapVisible, setIsMapVisible] = useState(false);
 
-  const statusConfig = getStatusConfig(event.status);
+  const statusStr = String(event.status || '').toUpperCase();
+  const statusColor = getStatusColor(statusStr);
 
-  // This is for Calculating the total, remaining, and sold tickets dynamically based on the fetched tickets
-  const dynamicTotal = tickets.reduce((sum, ticket) => sum + (parseInt(ticket.original_qty) || 0), 0);
-  const dynamicRemaining = tickets.reduce((sum, ticket) => sum + (parseInt(ticket.quantity) || 0), 0);
-  const dynamicSold = Math.max(0, dynamicTotal - dynamicRemaining);
+  const dynamicTotal    = tickets.reduce((s, t) => s + (parseInt(t.original_qty) || 0), 0);
+  const dynamicRemaining = tickets.reduce((s, t) => s + (parseInt(t.quantity)     || 0), 0);
+  const dynamicSold     = Math.max(0, dynamicTotal - dynamicRemaining);
+  const pct             = dynamicTotal > 0 ? Math.round((dynamicSold / dynamicTotal) * 100) : 0;
 
-  useEffect(() => {
-    fetchEventTickets();
-  }, []);
+  useEffect(() => { fetchEventTickets(); }, []);
 
   const fetchEventTickets = async () => {
     try {
       if (!userInfo?.token) return;
-
-      const response = await fetch(`${API_BASE_URL}/merchant/tickets`, {
-        headers: {
-          "Authorization": `Bearer ${userInfo.token}`,
-          "Accept": "application/json"
-        }
+      const res = await fetch(`${API_BASE_URL}/merchant/tickets`, {
+        headers: { Authorization: `Bearer ${userInfo.token}`, Accept: 'application/json' },
       });
-
-      if (!response.ok) throw new Error("Failed to fetch tickets");
-
-      const json = await response.json();
-      
-      const allTickets = json.data || json.tickets || json;
-      
-      const filteredTickets = Array.isArray(allTickets) 
-        ? allTickets.filter(ticket => ticket.event_id === event.id)
-        : [];
-
-      setTickets(filteredTickets);
-    } catch (error) {
-      console.error('Error fetching tickets:', error);
+      if (!res.ok) throw new Error('Failed to fetch tickets');
+      const json = await res.json();
+      const all = json.data || json.tickets || json;
+      setTickets(Array.isArray(all) ? all.filter(t => t.event_id === event.id) : []);
+    } catch (e) {
+      console.error('Error fetching tickets:', e);
     } finally {
       setLoadingTickets(false);
     }
   };
 
+  const handleLogout = () =>
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => logout() },
+    ]);
+
+  // Mock lineup
+  const LINEUP = ['Headliner Name', 'Supporting Artist', 'Guest Performer', 'Special Guest', 'DJ Set'];
+
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
-
-      <View style={styles.bgOrb1} />
-      <View style={styles.bgOrb2} />
+      <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+      <BgDecor />
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Modern Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>✕</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Event Details</Text>
-          <View style={{ width: 44 }} />
-        </View>
+        <Header navigation={navigation} onBack={() => navigation.goBack()} />
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Main Hero Image */}
-          <View style={styles.imageContainer}>
-            {event.event_image_url ? (
-              <Image
-                source={{ uri: event.event_image_url }}
-                style={styles.heroImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.placeholderImage}>
-                <Text style={{ color: '#4A8AAF', fontWeight: '600' }}>No Image Available</Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+
+          {/* Hero */}
+          <ImageBackground
+            source={{ uri: event.event_image_url || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+            style={styles.heroBanner}>
+            <LinearGradient colors={['rgba(5,10,20,0.1)', 'rgba(5,10,20,0.97)']} style={styles.heroGradient}>
+              {(event.category || event.event_category) && (
+                <View style={styles.categoryPill}>
+                  <Text style={styles.categoryPillText}>
+                    {(event.category).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.heroTitle}>{event.event_name}</Text>
+              <View style={styles.heroMetaRow}>
+                <View style={styles.heroMetaItem}>
+                  <Foundation name="marker" size={13} color="#FFF" />
+                  <Text style={styles.heroMetaText}>{event.event_venue || 'TBA'}</Text>
+                </View>
+                <View style={styles.heroMetaDot} />
+                <View style={styles.heroMetaItem}>
+                  <Foundation name="calendar" size={13} color={statusColor} />
+                  <Text style={[styles.heroMetaText, { color: statusColor }]}>{event.event_date}</Text>
+                </View>
+                <View style={styles.heroMetaDot} />
+                <View style={styles.heroMetaItem}>
+                  <Foundation name="clock" size={13} color={statusColor} />
+                  <Text style={[styles.heroMetaText, { color: statusColor }]}>{formatTime(event.event_time)}</Text>
+                </View>
               </View>
-            )}
-            <View style={[styles.statusPill, statusConfig.pillStyle]}>
-              <Text style={[styles.statusText, statusConfig.textStyle]}>
-                {statusConfig.label}
-              </Text>
+            </LinearGradient>
+          </ImageBackground>
+
+          <View style={styles.body}>
+
+            {/* Sales Counter Card */}
+            <View style={[styles.card, { shadowColor: statusColor }]}>
+              <View style={styles.cardRow}>
+                <View>
+                  <Text style={styles.cardLabel}>TOTAL TICKETS SOLD</Text>
+                  <Text style={styles.cardCountBig}>
+                    {loadingTickets ? '—' : dynamicSold.toLocaleString()}
+                    <Text style={styles.cardCapacity}> / {loadingTickets ? '—' : dynamicTotal.toLocaleString()}</Text>
+                  </Text>
+                </View>
+                <View style={[styles.pctBadge, { borderColor: statusColor + '50', backgroundColor: statusColor + '15' }]}>
+                  <Text style={[styles.pctBadgeText, { color: statusColor }]}>{loadingTickets ? '-' : pct}%</Text>
+                </View>
+              </View>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: statusColor }]} />
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.cardSubLeft}>{pct}% of Capacity Sold</Text>
+                <Text style={styles.cardSubRight}>{loadingTickets ? '—' : dynamicRemaining.toLocaleString()} Remaining</Text>
+              </View>
+            </View>
+
+            {/* Ticket Tiers */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>TICKET TIERS</Text>
+              {loadingTickets ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color={statusColor} />
+                  <Text style={[styles.loadingText, { color: statusColor }]}>Loading tickets…</Text>
+                </View>
+              ) : tickets.length > 0 ? (
+                tickets.map((ticket, index) => {
+                  const tkTotal     = parseInt(ticket.original_qty) || 0;
+                  const tkRemaining = parseInt(ticket.quantity)     || 0;
+                  const tkSold      = Math.max(0, tkTotal - tkRemaining);
+                  const tkPct       = tkTotal > 0 ? Math.round((tkSold / tkTotal) * 100) : 0;
+                  const tc          = TIER_COLORS[index % TIER_COLORS.length];
+
+                  return (
+                    <View key={ticket.id.toString()} style={[styles.tierCard, { borderColor: tc + '55' }]}>
+                      <View style={styles.tierTop}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.tierName}>{ticket.name.toUpperCase()}</Text>
+                        </View>
+                        <Text style={[styles.tierPrice, { color: tc }]}>₱{ticket.price}</Text>
+                      </View>
+                      <View style={styles.tierStatsRow}>
+                        <View style={styles.tierStat}>
+                          <Text style={styles.tierStatVal}>{tkSold.toLocaleString()}</Text>
+                          <Text style={styles.tierStatLabel}>SOLD</Text>
+                        </View>
+                        <View style={[styles.tierDivider, { backgroundColor: tc + '30' }]} />
+                        <View style={styles.tierStat}>
+                          <Text style={styles.tierStatVal}>{tkTotal.toLocaleString()}</Text>
+                          <Text style={styles.tierStatLabel}>CAPACITY</Text>
+                        </View>
+                        <View style={[styles.tierDivider, { backgroundColor: tc + '30' }]} />
+                        <View style={styles.tierStat}>
+                          <Text style={[styles.tierStatVal, { color: tc }]}>{tkRemaining.toLocaleString()}</Text>
+                          <Text style={styles.tierStatLabel}>LEFT</Text>
+                        </View>
+                      </View>
+                      <View style={styles.tierTrack}>
+                        <View style={[styles.tierFill, { width: `${tkPct}%`, backgroundColor: tc }]} />
+                      </View>
+                      <Text style={[styles.tierPct, { color: tc }]}>{tkPct}% Sold</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.emptyText}>No ticket tiers found for this event.</Text>
+              )}
+            </View>
+
+            {/* Event Line-up */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>EVENT LINE-UP</Text>
             </View>
           </View>
 
-          <View style={styles.contentContainer}>
-            <Text style={styles.title}>{event.event_name}</Text>
-
-            {/* Info Card (Date & Venue) */}
-            <View style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconPlaceholder}>
-                  <Text style={styles.infoIconText}>📅</Text>
+          {/* Lineup scroll */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.lineupScroll}>
+            {LINEUP.map((artist, idx) => (
+              <TouchableOpacity key={idx} activeOpacity={0.8} style={styles.artistCard}>
+                <View style={[styles.artistPhoto, { backgroundColor: statusColor + '18' }]}>
+                  <Foundation name="torsos-all" size={32} color={statusColor} />
                 </View>
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>DATE & TIME</Text>
-                  <Text style={styles.infoValue}>{event.event_date} @ {event.event_time}</Text>
+                <View style={[styles.artistInfoBar, { backgroundColor: 'rgba(5,10,20,0.7)' }]}>
+                  <Text style={styles.artistName}>{artist}</Text>
+                  <Text style={[styles.artistRole, { color: statusColor }]}>
+                    {idx === 0 ? 'Headliner' : idx === 1 ? 'Direct Support' : 'Performer'}
+                  </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-              <View style={styles.divider} />
+          <View style={styles.body}>
 
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconPlaceholder}>
-                  <Text style={styles.infoIconText}>📍</Text>
-                </View>
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>VENUE</Text>
-                  <Text style={styles.infoValue}>{event.event_venue}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* About & Seat Plan Section */}
-            <Text style={styles.sectionTitle}>About Event</Text>
-            <Text style={styles.description}>{event.description}</Text>
-
-            {/* --- UPDATED STATS GRID --- */}
-            <Text style={styles.sectionTitle}>Ticket Sales</Text>
-            <View style={styles.statsCard}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>SOLD</Text>
-                {loadingTickets ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.statValue}>{dynamicSold}</Text>
-                )}
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>TOTAL</Text>
-                {loadingTickets ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.statValue}>{dynamicTotal}</Text>
-                )}
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>REMAINING</Text>
-                {loadingTickets ? (
-                  <ActivityIndicator size="small" color="#00C2FF" />
-                ) : (
-                  <Text style={[styles.statValue, { color: '#00C2FF' }]}>{dynamicRemaining}</Text>
-                )}
-              </View>
-            </View>
-
-            {/* Ticket Categories Section */}
-            <Text style={styles.sectionTitle}>Categories</Text>
-            
-            {loadingTickets ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator size="small" color="#00C2FF" />
-                <Text style={styles.loadingText}>Loading tickets...</Text>
-              </View>
-            ) : tickets.length > 0 ? (
-              <View style={styles.ticketList}>
-                {tickets.map((ticket) => (
-                  <View 
-                    key={ticket.id.toString()} 
-                    style={[styles.ticketTypeCard, { borderLeftColor: ticket.color || '#00C2FF' }]}
-                  >
-                    <View style={styles.ticketTypeLeft}>
-                      <Text style={styles.ticketTypeName}>{ticket.name}</Text>
-                      <View style={[styles.typeBadge, { backgroundColor: (ticket.color || '#00C2FF') + '20' }]}>
-                        <Text style={[styles.typeBadgeText, { color: ticket.color || '#00C2FF' }]}>
-                          {ticket.type}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.ticketTypeRight}>
-                      <Text style={styles.ticketPrice}>
-                        <Text style={styles.currencyText}>PHP </Text>
-                        {ticket.price}
-                      </Text>
-                      <Text style={styles.ticketQty}>{ticket.quantity} / {ticket.original_qty} left</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.description}>No ticket categories found for this event.</Text>
-            )}
-
+            {/* Seat Plan */}
             {event.seat_plan_url && (
-              <>
-                <Text style={styles.sectionTitle}>Seat Plan</Text>
-                <TouchableOpacity activeOpacity={0.9} style={styles.seatPlanContainer}>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>SEAT PLAN</Text>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.seatCard}
+                  onPress={() => setIsMapVisible(true)}>
                   <Image
                     source={{ uri: event.seat_plan_url }}
-                    style={styles.seatPlanImage}
-                    resizeMode="contain"
+                    style={styles.seatImage}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(5,10,20,0.75)']}
+                    style={StyleSheet.absoluteFill}
                   />
                 </TouchableOpacity>
-              </>
+              </View>
             )}
+
+            {/* Event Description */}
+            {event.description && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>EVENT DESCRIPTION</Text>
+                <View style={styles.descCard}>
+                  <Text
+                    style={styles.descText}
+                    numberOfLines={isDescExpanded ? undefined : 3}>
+                    {event.description}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setIsDescExpanded(v => !v)}
+                    style={styles.readMoreBtn}>
+                    <Text style={styles.readMoreText}>
+                      {isDescExpanded ? 'Show Less' : 'Read More'}
+                    </Text>
+                    <View style={[styles.arrowIcon, isDescExpanded && styles.arrowRotated]} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <View style={{ height: 50 }} />
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Seat Map Zoom Modal */}
+      <Modal
+        visible={isMapVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsMapVisible(false)}>
+        <View style={styles.modalBg}>
+          <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsMapVisible(false)}>
+            <Text style={styles.modalCloseText}>✕  CLOSE</Text>
+          </TouchableOpacity>
+          <ScrollView
+            style={styles.modalScrollArea}
+            contentContainerStyle={styles.modalScrollContent}
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}>
+            <Image
+              source={{ uri: event.seat_plan_url }}
+              style={styles.modalImage}
+              resizeMode="contain"
+            />
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#050A14' },
+  root:     { flex: 1, backgroundColor: '#050A14' },
   safeArea: { flex: 1 },
-  bgOrb1: {
-    position: 'absolute', width: 350, height: 350, borderRadius: 175,
-    backgroundColor: '#00C2FF', top: -100, left: -150, opacity: 0.06,
-  },
-  bgOrb2: {
-    position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: '#FF4D6A', top: 250, right: -150, opacity: 0.05,
-  },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 12,
-  },
-  backBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(19, 32, 53, 0.8)', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#1A2A44'
-  },
-  backBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: '400' },
-  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
 
-  scrollContent: { paddingBottom: 80 },
+  // BG Decor
+  bgOrb1:   { position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: '#00C2FF', top: -150, left: -200, opacity: 0.03 },
+  bgOrb2:   { position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: '#FF4D6A', bottom: -50, right: -150, opacity: 0.02 },
+  gridLine: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.025)' },
 
-  imageContainer: {
-    marginHorizontal: 20, marginTop: 10,
-    borderRadius: 28, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#1A2A44',
-  },
-  heroImage: { width: '100%', height: 260 },
-  placeholderImage: { width: '100%', height: 260, backgroundColor: '#0D1526', justifyContent: 'center', alignItems: 'center' },
+  // Header
+  header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 },
+  backBtn:       { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#132035' },
+  headerBranding:{ fontSize: 20 },
+  headerMedia:   { color: '#FFF', fontWeight: '600' },
+  headerTix:     { color: '#00C2FF', fontWeight: '800' },
+  profileBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
+  profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
 
-  // --- BASE PILL AND TEXT STYLES ---
-  statusPill: {
-    position: 'absolute', top: 16, right: 16,
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4,
-  },
-  statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  // Scroll
+  scroll: { paddingBottom: 0 },
+  body:   { paddingHorizontal: 20 },
 
-  // --- DYNAMIC STATUS STYLES ---
-  upcomingPill: { backgroundColor: 'rgba(251, 255, 19, 0.95)' },
-  upcomingText: { color: '#000000' },
-  activePill: { backgroundColor: 'rgba(14, 121, 0, 0.95)' },
-  activeText: { color: '#FFFFFF' },
-  ongoingPill: { backgroundColor: 'rgba(0, 51, 203, 0.95)' },
-  ongoingText: { color: '#FFFFFF' },
-  completedPill: { backgroundColor: 'rgba(75, 75, 75, 0.95)' },
-  completedText: { color: '#FFFFFF' },
-  cancelPill: { backgroundColor: 'rgba(255, 77, 106, 0.95)' },
-  cancelText: { color: '#FFFFFF' },
+  // Hero Banner — edge to edge
+  heroBanner:   { width: '100%', height: 290 },
+  heroGradient: { flex: 1, justifyContent: 'flex-end', padding: 20, paddingTop: 40 },
+  categoryPill: { alignSelf: 'flex-start', backgroundColor: '#FFD700', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginBottom: 10 },
+  categoryPillText: { color: '#050A14', fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
+  heroTitle:    { color: '#FFF', fontSize: 26, fontWeight: '900', letterSpacing: -0.5, marginBottom: 10 },
+  heroMetaRow:  { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  heroMetaDot:  { width: 3, height: 3, borderRadius: 2, backgroundColor: '#4A8AAF' },
+  heroMetaText: { color: '#C0D0E0', fontSize: 12, fontWeight: '600' },
 
-  contentContainer: { paddingHorizontal: 20, marginTop: 24 },
-  title: { color: '#FFFFFF', fontSize: 32, fontWeight: '900', marginBottom: 24, lineHeight: 38 },
+  // Sales Card
+  card:       { backgroundColor: '#0B1623', borderRadius: 24, padding: 22, borderWidth: 1, borderColor: '#132035', marginTop: 20, marginBottom: 6, elevation: 10, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
+  cardRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  cardLabel:  { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
+  cardCountBig:{ color: '#FFF', fontSize: 32, fontWeight: '800' },
+  cardCapacity:{ color: '#3D6080', fontSize: 20, fontWeight: '600' },
+  pctBadge:   { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  pctBadgeText:{ fontSize: 18, fontWeight: '900' },
+  progressTrack:{ height: 10, backgroundColor: '#132035', borderRadius: 5, overflow: 'hidden', marginVertical: 14 },
+  progressFill: { height: '100%', borderRadius: 5 },
+  cardSubLeft:  { color: '#FFF', fontSize: 12, fontWeight: '600' },
+  cardSubRight: { color: '#3D6080', fontSize: 12, fontWeight: '600' },
 
-  // --- INFO CARD ---
-  infoCard: {
-    backgroundColor: 'rgba(13, 21, 38, 0.7)', borderRadius: 24, padding: 20,
-    borderWidth: 1, borderColor: '#1A2A44', marginBottom: 30,
-  },
-  infoRow: { flexDirection: 'row', alignItems: 'center' },
-  infoIconPlaceholder: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035',
-    justifyContent: 'center', alignItems: 'center', marginRight: 16,
-  },
-  infoIconText: { fontSize: 16 },
-  infoTextContainer: { flex: 1 },
-  infoLabel: { color: '#4A8AAF', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 4 },
-  infoValue: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', lineHeight: 22 },
-  divider: { height: 1, backgroundColor: '#1A2A44', marginVertical: 16, marginLeft: 56 },
+  // Section header
+  section:      { marginTop: 24, marginBottom: 4 },
+  sectionTitle: { color: '#FFF', fontSize: 13, fontWeight: '800', letterSpacing: 2, marginBottom: 14 },
 
-  // --- STATS GRID (Replaced Progress Bar) ---
-  statsCard: {
-    flexDirection: 'row', backgroundColor: 'rgba(13, 21, 38, 0.7)',
-    borderRadius: 20, paddingVertical: 20, paddingHorizontal: 16,
-    borderWidth: 1, borderColor: '#1A2A44', marginBottom: 30,
-    justifyContent: 'space-between', alignItems: 'center'
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statLabel: { color: '#4A8AAF', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 6 },
-  statValue: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
-  statDivider: { width: 1, height: 40, backgroundColor: '#1A2A44' },
+  // Ticket Tiers
+  tierCard:     { backgroundColor: '#0B1623', borderRadius: 20, padding: 18, borderWidth: 1.5, marginBottom: 12 },
+  tierTop:      { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  tierName:     { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.4 },
+  tierPrice:    { fontSize: 17, fontWeight: '900' },
+  tierStatsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  tierStat:     { flex: 1, alignItems: 'center' },
+  tierStatVal:  { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  tierStatLabel:{ color: '#3D6080', fontSize: 9, fontWeight: '700', marginTop: 2, letterSpacing: 1 },
+  tierDivider:  { width: 1, height: 32, marginHorizontal: 4 },
+  tierTrack:    { height: 5, backgroundColor: '#132035', borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
+  tierFill:     { height: '100%', borderRadius: 3 },
+  tierPct:      { fontSize: 10, fontWeight: '800', textAlign: 'right', letterSpacing: 1 },
 
-  sectionTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginBottom: 16, letterSpacing: 0.5 },
-  description: { color: '#A0B3C6', fontSize: 15, lineHeight: 26, marginBottom: 30, fontWeight: '400' },
+  // Empty / loading
+  loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  loadingText: { fontSize: 14, fontWeight: '600' },
+  emptyText:   { color: '#4A8AAF', fontSize: 14 },
 
-  // --- TICKET CATEGORIES ---
-  ticketList: { marginBottom: 15 },
-  loadingBox: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, opacity: 0.8 },
-  loadingText: { color: '#00C2FF', marginLeft: 12, fontSize: 15, fontWeight: '600' },
-  ticketTypeCard: {
-    backgroundColor: 'rgba(11, 22, 35, 0.8)', borderRadius: 20, padding: 20,
-    marginBottom: 16, borderWidth: 1, borderColor: '#1A2A44',
-    borderLeftWidth: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
-  },
-  ticketTypeLeft: { flex: 1, paddingRight: 10 },
-  ticketTypeName: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginBottom: 10 },
-  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  typeBadgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  ticketTypeRight: { alignItems: 'flex-end', justifyContent: 'center' },
-  currencyText: { fontSize: 14, fontWeight: '600', color: '#4A8AAF' },
-  ticketPrice: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', marginBottom: 6 },
-  ticketQty: { color: '#4A8AAF', fontSize: 13, fontWeight: '700' },
+  // Lineup horizontal scroll (matches PurchaseScreen style)
+  lineupScroll: { paddingHorizontal: 20, paddingBottom: 4, gap: 10 },
+  artistCard:   { width: 140, height: 200, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0B1623' },
+  artistPhoto:  { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  artistInfoBar:{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 },
+  artistName:   { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  artistRole:   { fontSize: 9, fontWeight: '700', marginTop: 2, letterSpacing: 0.5 },
 
-  // --- SEAT PLAN ---
-  seatPlanContainer: {
-    borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#1A2A44',
-    backgroundColor: '#0D1526', padding: 10, marginBottom: 20
-  },
-  seatPlanImage: { width: '100%', height: 220, borderRadius: 12 },
+  // Seat Plan
+  seatCard:    { height: 220, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0B1623', justifyContent: 'flex-end' },
+  seatImage:   { ...StyleSheet.absoluteFillObject },
+  seatHintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 14 },
+  seatHintText:{ color: '#FFF', fontSize: 12, fontWeight: '700' },
+
+  // Description
+  descCard:    { backgroundColor: '#0B1623', borderRadius: 20, borderWidth: 1, borderColor: '#132035', overflow: 'hidden' },
+  descText:    { color: '#7A99B8', fontSize: 14, lineHeight: 23, paddingHorizontal: 18, paddingTop: 18 },
+  readMoreBtn: { paddingHorizontal: 18, paddingBottom: 18, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  readMoreText: { color: '#00C2FF', fontSize: 13, fontWeight: '700' },
+  arrowIcon:    { width: 7, height: 7, borderRightWidth: 1.5, borderBottomWidth: 1.5, borderColor: '#00C2FF', transform: [{ rotate: '45deg' }], marginTop: -2 },
+  arrowRotated: { transform: [{ rotate: '225deg' }], marginTop: 2 },
+
+  // Modal
+  modalBg:           { flex: 1, backgroundColor: 'rgba(5,10,20,0.98)', justifyContent: 'center', alignItems: 'center' },
+  modalCloseBtn:     { position: 'absolute', top: 60, right: 30, zIndex: 10 },
+  modalCloseText:    { color: '#FFF', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  modalScrollArea:   { width: '100%', flex: 1 },
+  modalScrollContent:{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 },
+  modalImage:        { width: width, height: height * 0.65 },
+  modalHint:         { color: '#4A5568', fontSize: 12, marginBottom: Platform.OS === 'ios' ? 44 : 24 },
 });
