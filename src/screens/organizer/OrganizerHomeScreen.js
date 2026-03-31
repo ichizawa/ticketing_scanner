@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statNumber: {
-    color: '#00C2FF', // Using your cyan orb color for emphasis
+    color: '#00C2FF', 
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,

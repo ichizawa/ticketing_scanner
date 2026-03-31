@@ -36,8 +36,8 @@ export default function MerchantHomeScreen({ navigation }) {
         fetch(`${API_BASE_URL}/merchant/sales`, { method: 'GET', headers })
       ]);
 
-      if (!eventsResponse.ok) console.log("❌ Events API Error:", eventsResponse.status);
-      if (!salesResponse.ok) console.log("❌ Sales API Error:", salesResponse.status);
+      if (!eventsResponse.ok) console.log("Events API Error:", eventsResponse.status);
+      if (!salesResponse.ok) console.log("Sales API Error:", salesResponse.status);
 
       let sold = 0;
       let active = 0;
