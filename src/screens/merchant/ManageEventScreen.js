@@ -85,7 +85,7 @@ export default function ManageEventScreen({ navigation }) {
 
       // Normalize status and date if needed
       const statusStr = String(event.status || '').toUpperCase();
-      const eventDate = event.event_date; 
+      const eventDate = event.event_date;
 
       switch (activeTab) {
         case 'Upcoming':
@@ -242,23 +242,6 @@ export default function ManageEventScreen({ navigation }) {
         <Text style={styles.cardTitle}>{item.event_name}</Text>
         <Text style={styles.cardVenue}>{item.event_venue}</Text>
         <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {formatTime(item.event_time)}</Text>
-
-        <View style={styles.miniRow}>
-          <View style={styles.miniTrack}>
-            <View
-              style={[
-                styles.miniFill,
-                { width: `${pct}%`, backgroundColor: accentColor }
-              ]}
-            />
-          </View>
-          <View style={styles.miniInfo}>
-             <Text style={styles.miniCount}>
-               {sold.toLocaleString()} <Text style={{ color: '#3D6080', fontSize: 10 }}>/ {total.toLocaleString()} SOLD</Text>
-             </Text>
-          </View>
-        </View>
-
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
             VIEW DETAILS ›

@@ -4,27 +4,39 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AuthContext } from '../../context/AuthContext'
 import Header from '../../components/Header'
+import { API_BASE_URL, IMAGE_BASE_URL } from '../../config'
 
 const { width } = Dimensions.get('window')
 
-// Mock Data
-const HERO_EVENTS = [
-  { id: 1, title: 'ELECTRONIC PARADISE', genre: 'ELECTRONIC', desc: 'The ultimate beach festival experience with top DJs.', image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800' },
-  { id: 2, title: 'ART EXPO 2026', genre: 'ART & CULTURE', desc: 'Modern masterpieces from around the globe.', image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800' },
-  { id: 3, title: 'TECH SUMMIT', genre: 'INNOVATION', desc: 'Building the future together with industry leaders.', image: 'https://images.unsplash.com/photo-1540575861501-7c03b177a2a5?auto=format&fit=crop&q=80&w=800' },
-]
+const formatTime = (time) => {
+  if (!time) return 'TBA';
+  try {
+    const parts = time.split(':');
+    if (parts.length < 2) return time;
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  } catch (e) {
+    return time;
+  }
+};
 
-// For seamless loop: [Last, 0, 1, 2, First]
-const CLONED_EVENTS = [
-  HERO_EVENTS[HERO_EVENTS.length - 1],
-  ...HERO_EVENTS,
-  HERO_EVENTS[0],
-]
+const getImageUrl = (path) => {
+  if (!path || path === 'null') return null;
+  if (path.startsWith('http')) return path;
 
-const DON_MISS = [
-  { id: 1, title: 'Summer Fest 2025', genre: 'Festival', venue: 'Grand Plaza Arena', time: 'Mar 18, 7:00 PM', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=600', isFavorite: false },
-  { id: 2, title: 'Indie Dreams', genre: 'Live Music', venue: 'The Underground', time: 'Mar 20, 8:30 PM', image: 'https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&q=80&w=600', isFavorite: true },
-]
+  const baseUrl = IMAGE_BASE_URL.endsWith('/')
+    ? IMAGE_BASE_URL.slice(0, -1)
+    : IMAGE_BASE_URL;
+
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+};
+
+// Mock 
+
 
 const REFINED_EXPLORE = [
   { id: 1, title: 'Tech Summit 2026', venue: 'Innovation Hub', time: '9:00 AM', date: 'MAR 22' },
@@ -36,13 +48,45 @@ const RECENT_EVENTS = [
 ]
 
 export default function HomeScreen({ navigation }) {
-  const { logout } = useContext(AuthContext);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { userInfo } = useContext(AuthContext);
+
   const [favorites, setFavorites] = useState([2])
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(1);
   const scrollRef = useRef(null)
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/customer/events`, {
+        headers: {
+          "Authorization": `Bearer ${userInfo.token}`,
+          "Accept": "application/json"
+        }
+      });
+      const json = await response.json();
+      setEvents(json.data || []);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userInfo?.token) fetchEvents();
+  }, [userInfo]);
+
+  const heroData = events.slice(0, 3);
+  const clonedHeroEvents = heroData.length > 0 
+    ? [heroData[heroData.length - 1], ...heroData, heroData[0]] 
+    : [];
 
   // Auto-scroll logic
   useEffect(() => {
+    if (clonedHeroEvents.length === 0) return;
+
     const interval = setInterval(() => {
       let nextIndex = activeIndex + 1;
 
@@ -53,7 +97,7 @@ export default function HomeScreen({ navigation }) {
 
       // Update state after animation would typically finish
       setTimeout(() => {
-        if (nextIndex >= CLONED_EVENTS.length - 1) {
+        if (nextIndex >= clonedHeroEvents.length - 1) {
           // If at the clone of the first item, jump back to the actual first item
           scrollRef.current?.scrollTo({ x: width, animated: false });
           setActiveIndex(1);
@@ -64,7 +108,7 @@ export default function HomeScreen({ navigation }) {
     }, 3000); // 3 seconds interval
 
     return () => clearInterval(interval);
-  }, [activeIndex]);
+  }, [activeIndex, clonedHeroEvents.length]);
 
   const handleScroll = (event) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -73,9 +117,9 @@ export default function HomeScreen({ navigation }) {
     // Silent jumps for manual swipe
     if (index === 0) {
       // Swiped into the clone of the last item
-      scrollRef.current?.scrollTo({ x: HERO_EVENTS.length * width, animated: false });
-      setActiveIndex(HERO_EVENTS.length);
-    } else if (index === CLONED_EVENTS.length - 1) {
+      scrollRef.current?.scrollTo({ x: heroData.length * width, animated: false });
+      setActiveIndex(heroData.length);
+    } else if (index === clonedHeroEvents.length - 1) {
       // Swiped into the clone of the first item
       scrollRef.current?.scrollTo({ x: width, animated: false });
       setActiveIndex(1);
@@ -100,58 +144,60 @@ export default function HomeScreen({ navigation }) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
           {/* Hero Carousel */}
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleScroll}
-            contentOffset={{ x: width, y: 0 }} // Start at first real item
-            style={styles.heroCarousel}
-          >
-            {CLONED_EVENTS.map((event, idx) => (
-              <View key={`${event.id}-${idx}`} style={styles.heroCard}>
-                <ImageBackground source={{ uri: event.image }} style={styles.heroBg}>
-                  <LinearGradient
-                    colors={['transparent', 'rgba(5,10,20,0.9)']}
-                    style={styles.heroOverlay}
-                  >
-                    <View style={styles.heroTag}><Text style={styles.heroTagText}>{event.genre}</Text></View>
-                    <Text style={styles.heroTitle}>{event.title}</Text>
-                    <Text style={styles.heroSubtitle}>{event.desc}</Text>
-
-                    <TouchableOpacity
-                      style={styles.heroFab}
-                      onPress={() => navigation.navigate('CustomerPurchase', { event })}
+          {clonedHeroEvents.length > 0 && (
+            <ScrollView
+              ref={scrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleScroll}
+              contentOffset={{ x: width, y: 0 }} // Start at first real item
+              style={styles.heroCarousel}
+            >
+              {clonedHeroEvents.map((event, idx) => (
+                <View key={`${event.id}-${idx}`} style={styles.heroCard}>
+                  <ImageBackground source={{ uri: getImageUrl(event.event_image) }} style={styles.heroBg}>
+                    <LinearGradient
+                      colors={['transparent', 'rgba(5,10,20,0.9)']}
+                      style={styles.heroOverlay}
                     >
-                      <Text style={styles.heroFabText}>Get Tickets Now</Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                </ImageBackground>
-              </View>
-            ))}
-          </ScrollView>
+                      <View style={styles.heroTag}><Text style={styles.heroTagText}>{event.event_category || 'EVENT'}</Text></View>
+                      <Text style={styles.heroTitle}>{event.event_name}</Text>
+                      <Text style={styles.heroSubtitle}>{event.event_description}</Text>
+
+                      <TouchableOpacity
+                        style={styles.heroFab}
+                        onPress={() => navigation.navigate('CustomerPurchase', { event })}
+                      >
+                        <Text style={styles.heroFabText}>Get Tickets Now</Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  </ImageBackground>
+                </View>
+              ))}
+            </ScrollView>
+          )}
 
           {/* Don't Miss This Week - Vertical List */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Don't Miss This Week</Text>
-            {DON_MISS.map(item => (
+            {events.slice(3, 6).map(item => (
               <View key={item.id} style={styles.verticalCard}>
                 <View style={styles.vCardTop}>
-                  <Image source={{ uri: item.image }} style={styles.vCardImg} />
+                  <Image source={{ uri: getImageUrl(item.event_image) }} style={styles.vCardImg} />
                   <TouchableOpacity
                     style={styles.heartBtn}
                     onPress={() => toggleFavorite(item.id)}
                   >
                     <Text style={styles.heartIcon}>{favorites.includes(item.id) ? '❤️' : '🤍'}</Text>
                   </TouchableOpacity>
-                  <View style={styles.vGenreTag}><Text style={styles.vGenreText}>{item.genre}</Text></View>
+                  <View style={styles.vGenreTag}><Text style={styles.vGenreText}>{item.event_category || 'EVENT'}</Text></View>
                 </View>
                 <View style={styles.vCardBottom}>
                   <View style={styles.vCardLeft}>
-                    <Text style={styles.vCardTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.vCardLoc}>{item.venue}</Text>
-                    <Text style={styles.vCardDate}>{item.time}</Text>
+                    <Text style={styles.vCardTitle} numberOfLines={1}>{item.event_name}</Text>
+                    <Text style={styles.vCardLoc}>{item.event_venue}</Text>
+                    <Text style={styles.vCardDate}>{item.event_date} • {formatTime(item.event_time)}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.vCardBuyBtn}
