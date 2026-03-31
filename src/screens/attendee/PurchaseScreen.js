@@ -3,11 +3,28 @@ import {
     TextInput, Animated, Dimensions, StatusBar, Image, Alert, Platform,
     FlatList, Modal
 } from 'react-native'
+import { Entypo, MaterialIcons } from '@expo/vector-icons'
 import React, { useState, useRef, useEffect, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
 
 const { width, height } = Dimensions.get('window')
+
+// Helper to format HH:mm:ss to h:mm AM/PM
+const formatTime = (time) => {
+    if (!time) return 'TBA';
+    try {
+        const parts = time.split(':');
+        if (parts.length < 2) return time;
+        let h = parseInt(parts[0], 10);
+        const m = parts[1];
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${h}:${m} ${ampm}`;
+    } catch (e) {
+        return time;
+    }
+};
 
 // --- Mock Data ---
 const ARTISTS = [
@@ -29,16 +46,19 @@ export default function PurchaseScreen({ navigation, route }) {
     const { logout } = useContext(AuthContext);
     const { event } = route.params || {};
 
-    const [step, setStep] = useState(0); 
+    const [step, setStep] = useState(0);
     const [expandedArtist, setExpandedArtist] = useState(null);
     const [aboutExpanded, setAboutExpanded] = useState(false);
     const [isMapVisible, setIsMapVisible] = useState(false);
 
     // Initial event data from params or defaults
     const displayEvent = {
-        title: event?.title || 'ASCENSION MUSIC FESTIVAL',
-        banner: event?.image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800',
-        date: event?.date || event?.time?.split(',')[0] || 'MAR 28'
+        title: event?.title || event?.event_name || 'ASCENSION MUSIC FESTIVAL',
+        banner: event?.image || event?.event_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800',
+        date: event?.date || event?.event_date || 'MAR 28',
+        time: event?.time || event?.event_time || '17:00:00',
+        venue: event?.venue || event?.event_venue || 'Philippine Arena',
+        category: event?.category || 'Music Festival'
     };
 
     // Multi-Tier Ticket Selection
@@ -152,7 +172,7 @@ export default function PurchaseScreen({ navigation, route }) {
     const renderArtistCard = ({ item }) => {
         const isExpanded = expandedArtist === item.id;
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
                 activeOpacity={0.9}
                 style={styles.artistCard}
                 onPress={() => setExpandedArtist(isExpanded ? null : item.id)}
@@ -173,18 +193,24 @@ export default function PurchaseScreen({ navigation, route }) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             {/* Event Header */}
             <View style={styles.banner}>
-                <Image 
-                    source={{ uri: displayEvent.banner }} 
+                <Image
+                    source={{ uri: displayEvent.banner }}
                     style={styles.bannerImage}
                 />
                 <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(5, 10, 20, 0.7)' }]} />
                 <View style={styles.bannerContent}>
-                    <View style={styles.dateTag}><Text style={styles.dateTagText}>{displayEvent.date}</Text></View>
+                    <View style={styles.categoryTag}><Text style={styles.categoryTagText}>{displayEvent.category.toUpperCase()}</Text></View>
                     <Text style={styles.eventTitle}>{displayEvent.title}</Text>
-                    <TouchableOpacity style={styles.locationLink}>
-                        <Text style={styles.locIconShape} />
-                        <Text style={styles.locText}>Philippine Arena · Get Directions</Text>
-                    </TouchableOpacity>
+                    <View style={styles.eventMetaContainer}>
+                        <View style={styles.metaBadgeLight}>
+                            <MaterialIcons name="date-range" color="#000" size={14} style={{ marginRight: 4 }} />
+                            <Text style={styles.metaTextDark}>{displayEvent.date} · {formatTime(displayEvent.time)}</Text>
+                        </View>
+                        <View style={styles.metaBadgeLight}>
+                            <Entypo name="location-pin" color="#000" size={14} style={{ marginRight: 4 }} />
+                            <Text style={styles.metaTextDark}>{displayEvent.venue}</Text>
+                        </View>
+                    </View>
                 </View>
             </View>
 
@@ -192,7 +218,7 @@ export default function PurchaseScreen({ navigation, route }) {
             <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>LINE-UP</Text>
             </View>
-            <FlatList 
+            <FlatList
                 data={ARTISTS}
                 horizontal
                 renderItem={renderArtistCard}
@@ -204,11 +230,11 @@ export default function PurchaseScreen({ navigation, route }) {
             {/* About Section */}
             <View style={styles.aboutContainer}>
                 <Text style={styles.aboutText}>
-                    Join the ultimate melodic bass experience at Ascension Music Festival. 
+                    Join the ultimate melodic bass experience at Ascension Music Festival.
                     Featuring world-class production and emotional journeys through sound.
                 </Text>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                     style={styles.expandBtn}
                     onPress={() => setAboutExpanded(!aboutExpanded)}
                 >
@@ -232,8 +258,8 @@ export default function PurchaseScreen({ navigation, route }) {
             <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>SEATING CHART</Text>
             </View>
-            <TouchableOpacity 
-                activeOpacity={0.9} 
+            <TouchableOpacity
+                activeOpacity={0.9}
                 style={styles.seatMapCard}
                 onPress={() => setIsMapVisible(true)}
             >
@@ -248,7 +274,7 @@ export default function PurchaseScreen({ navigation, route }) {
                 <Text style={styles.sectionTitle}>SELECT TICKETS</Text>
             </View>
             {TIERS.map(tier => (
-                <TouchableOpacity 
+                <TouchableOpacity
                     key={tier.id}
                     activeOpacity={0.9}
                     onPress={() => setActiveTierId(activeTierId === tier.id ? null : tier.id)}
@@ -269,18 +295,18 @@ export default function PurchaseScreen({ navigation, route }) {
                         </View>
                         <View style={styles.tierPriceControl}>
                             <Text style={[styles.tierPrice, { color: tier.color }]}>₱{tier.price.toLocaleString()}</Text>
-                            
+
                             {/* In-Card Quantity Selector - ONLY show for active tier */}
                             {activeTierId === tier.id && (
                                 <View style={styles.tierQtyAction}>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.minQtyBtn}
                                         onPress={() => updateTicketQty(tier.id, -1)}
                                     >
                                         <Text style={styles.minQtyText}>-</Text>
                                     </TouchableOpacity>
                                     <Text style={styles.tierQtyValue}>{selectedTickets[tier.id]}</Text>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.plusQtyBtn}
                                         onPress={() => updateTicketQty(tier.id, 1)}
                                     >
@@ -310,11 +336,11 @@ export default function PurchaseScreen({ navigation, route }) {
         <View style={styles.pageContainer}>
             <Text style={styles.pageTitle}>Guest Details</Text>
             <Text style={styles.pageSub}>Simple registration to issue your tickets.</Text>
-            
+
             <View style={styles.form}>
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>FULL NAME</Text>
-                    <TextInput 
+                    <TextInput
                         style={styles.input}
                         placeholder="e.g. Juan De La Cruz"
                         placeholderTextColor="#4A5568"
@@ -324,7 +350,7 @@ export default function PurchaseScreen({ navigation, route }) {
                 </View>
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>EMAIL ADDRESS</Text>
-                    <TextInput 
+                    <TextInput
                         style={styles.input}
                         placeholder="juan@email.com"
                         placeholderTextColor="#4A5568"
@@ -351,9 +377,9 @@ export default function PurchaseScreen({ navigation, route }) {
                         <Text style={styles.summaryVal}>₱{(tier.price * selectedTickets[tier.id]).toLocaleString()}</Text>
                     </View>
                 ))}
-                
+
                 <View style={[styles.divider, { marginVertical: 15 }]} />
-                
+
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Guest Name</Text>
                     <Text style={styles.summaryVal}>{name}</Text>
@@ -370,7 +396,7 @@ export default function PurchaseScreen({ navigation, route }) {
             </View>
 
             <View style={styles.promoWrap}>
-                <TextInput 
+                <TextInput
                     style={styles.promoInput}
                     placeholder="Promo Code"
                     placeholderTextColor="#4A5568"
@@ -390,14 +416,14 @@ export default function PurchaseScreen({ navigation, route }) {
             <Text style={styles.pageSub}>Secure payment processing via MediaOne Pay.</Text>
 
             <View style={styles.paymentToggle}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.toggleBtn, selectedPayment === 'gcash' && styles.toggleActive]}
                     onPress={() => setSelectedPayment('gcash')}
                 >
                     <View style={styles.gcashLogo} />
                     <Text style={styles.toggleText}>GCash</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.toggleBtn, selectedPayment === 'card' && styles.toggleActive]}
                     onPress={() => setSelectedPayment('card')}
                 >
@@ -410,7 +436,7 @@ export default function PurchaseScreen({ navigation, route }) {
                 <View style={styles.paymentForm}>
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>GCASH PHONE NUMBER</Text>
-                        <TextInput 
+                        <TextInput
                             style={styles.input}
                             placeholder="09XXXXXXXXX"
                             placeholderTextColor="#4A5568"
@@ -421,7 +447,7 @@ export default function PurchaseScreen({ navigation, route }) {
                     </View>
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>OTP CODE</Text>
-                        <TextInput 
+                        <TextInput
                             style={styles.input}
                             placeholder="6-Digit OTP"
                             placeholderTextColor="#4A5568"
@@ -438,7 +464,7 @@ export default function PurchaseScreen({ navigation, route }) {
                 <View style={styles.paymentForm}>
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>16-DIGIT CARD NUMBER</Text>
-                        <TextInput 
+                        <TextInput
                             style={styles.input}
                             placeholder="0000 0000 0000 0000"
                             placeholderTextColor="#4A5568"
@@ -450,7 +476,7 @@ export default function PurchaseScreen({ navigation, route }) {
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
                             <Text style={styles.label}>EXPIRY</Text>
-                            <TextInput 
+                            <TextInput
                                 style={styles.input}
                                 placeholder="MM/YY"
                                 placeholderTextColor="#4A5568"
@@ -460,7 +486,7 @@ export default function PurchaseScreen({ navigation, route }) {
                         </View>
                         <View style={[styles.inputGroup, { flex: 0.6 }]}>
                             <Text style={styles.label}>CVV</Text>
-                            <TextInput 
+                            <TextInput
                                 style={styles.input}
                                 placeholder="123"
                                 placeholderTextColor="#4A5568"
@@ -482,7 +508,7 @@ export default function PurchaseScreen({ navigation, route }) {
             </View>
             <Text style={styles.successTitle}>Payment Successful!</Text>
             <Text style={styles.successBody}>
-                An email with your tickets and secure login credentials has been sent to <Text style={{ color: '#00C2FF' }}>{email}</Text>. 
+                An email with your tickets and secure login credentials has been sent to <Text style={{ color: '#00C2FF' }}>{email}</Text>.
             </Text>
 
             <View style={styles.ticketSummary}>
@@ -503,7 +529,7 @@ export default function PurchaseScreen({ navigation, route }) {
                 </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={styles.actionBtnPrimary}
                 onPress={() => navigation.navigate('CustomerHistory')}
             >
@@ -544,9 +570,26 @@ export default function PurchaseScreen({ navigation, route }) {
                 {/* Sticky Footer */}
                 {step < 4 && getTotalQty() > 0 && (
                     <View style={styles.stickyBar}>
-                        <View>
-                            <Text style={styles.totalLabelSmall}>Total Payment</Text>
-                            <Text style={styles.totalPriceSmall}>₱{calculateTotal().toLocaleString()}</Text>
+                        <View style={styles.stickyLeft}>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.selectedTiersScroll}
+                                contentContainerStyle={{ alignItems: 'center' }}
+                            >
+                                {getSelectedItems().map((tier, idx) => (
+                                    <View key={tier.id} style={[styles.tierPill, { borderColor: tier.color + '40' }]}>
+                                        <View style={[styles.tierPillDot, { backgroundColor: tier.color }]} />
+                                        <Text style={styles.tierPillText}>
+                                            <Text style={{ fontWeight: '900', color: '#FFF' }}>{selectedTickets[tier.id]}x</Text> {tier.name}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                            <View style={styles.totalRowSmall}>
+                                <Text style={styles.totalLabelSmall}>Total Due</Text>
+                                <Text style={styles.totalPriceSmall}>₱{calculateTotal().toLocaleString()}</Text>
+                            </View>
                         </View>
                         <TouchableOpacity style={styles.continueBtn} onPress={handleNext}>
                             <Text style={styles.continueText}>
@@ -576,7 +619,7 @@ const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#050A14' },
     safeArea: { flex: 1 },
     main: { flex: 1 },
-    
+
     // Branded Header (AttendeeHomeScreen Style)
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -609,13 +652,13 @@ const styles = StyleSheet.create({
     banner: { height: height * 0.28, width: '100%', position: 'relative' },
     bannerImage: { width: '100%', height: '100%' },
     bannerOverlay: { ...StyleSheet.absoluteFillObject },
-    bannerContent: { position: 'absolute', bottom: 20, left: 20 },
-    dateTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
-    dateTagText: { color: '#050A14', fontSize: 9, fontWeight: '900' },
+    bannerContent: { position: 'absolute', bottom: 20, left: 20, right: 20 },
+    categoryTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+    categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
     eventTitle: { color: '#FFF', fontSize: 24, fontWeight: '900' },
-    locationLink: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-    locIconShape: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#00C2FF', marginRight: 8 },
-    locText: { color: '#00C2FF', fontSize: 12, fontWeight: '600' },
+    eventMetaContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 8 },
+    metaBadgeLight: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+    metaTextDark: { color: '#000', fontSize: 11, fontWeight: '700' },
 
     sectionHeader: { paddingHorizontal: 20, marginTop: 40, marginBottom: 16 },
     sectionTitle: { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 2 },
@@ -653,8 +696,8 @@ const styles = StyleSheet.create({
     tierPriceControl: { alignItems: 'flex-end', marginLeft: 15 },
     tierPrice: { fontSize: 18, fontWeight: '900', marginBottom: 8 },
 
-    tierQtyAction: { 
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#132035', 
+    tierQtyAction: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#132035',
         borderRadius: 12, padding: 4, borderWidth: 1, borderColor: '#2E4A62'
     },
     minQtyBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B1623', borderRadius: 8 },
@@ -721,11 +764,17 @@ const styles = StyleSheet.create({
     actionBtnText: { color: '#050A14', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
 
     // Footer
-    stickyBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 120 : 100, backgroundColor: '#0B1623', borderTopWidth: 1, borderTopColor: '#132035', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 25, paddingBottom: Platform.OS === 'ios' ? 20 : 0 },
-    totalLabelSmall: { color: '#4A5568', fontSize: 10, fontWeight: '700' },
-    totalPriceSmall: { color: '#FFF', fontSize: 22, fontWeight: '900' },
-    continueBtn: { backgroundColor: '#00C2FF', paddingHorizontal: 25, height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
-    continueText: { color: '#050A14', fontSize: 14, fontWeight: '900' },
+    stickyBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: Platform.OS === 'ios' ? 120 : 105, backgroundColor: '#0B1623', borderTopWidth: 1, borderTopColor: '#132035', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 20 : 5 },
+    stickyLeft: { flex: 1, marginRight: 15, justifyContent: 'center' },
+    selectedTiersScroll: { marginBottom: 6, flexGrow: 0 },
+    tierPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(11, 22, 35, 0.7)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, marginRight: 8 },
+    tierPillDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+    tierPillText: { color: '#A0AEC0', fontSize: 11, fontWeight: '600' },
+    totalRowSmall: { flexDirection: 'row', alignItems: 'center' },
+    totalLabelSmall: { color: '#00C2FF', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', backgroundColor: 'rgba(0, 194, 255, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+    totalPriceSmall: { color: '#FFF', fontSize: 22, fontWeight: '900', marginLeft: 10 },
+    continueBtn: { backgroundColor: '#00C2FF', paddingHorizontal: 18, height: 50, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    continueText: { color: '#050A14', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
     nextArrowLine: { width: 10, height: 10, borderRightWidth: 2, borderBottomWidth: 2, borderColor: '#050A14', transform: [{ rotate: '-45deg' }] },
 
     // Modal
