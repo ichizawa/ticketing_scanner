@@ -1,0 +1,8 @@
+src/context/AuthContext.js:            fetch(`${API_BASE_URL}/login`, {
+src/context/AuthContext.js:                fetch(`${API_BASE_URL}/logout`, {
+src/screens/attendee/AttendeeHomeScreen.js:      const response = await fetch(`${API_BASE_URL}/users/events`, {
+src/screens/merchant/EventDetailsScreen.js:      const res = await fetch(`${API_BASE_URL}/merchant/tickets`, {
+src/screens/merchant/ManageEventScreen.js:      const response = await fetch(`${API_BASE_URL}/merchant/events`, {
+src/screens/merchant/MerchantHomeScreen.js:        fetch(`${API_BASE_URL}/merchant/events`, { method: 'GET', headers }),
+src/screens/merchant/MerchantHomeScreen.js:        fetch(`${API_BASE_URL}/merchant/sales`, { method: 'GET', headers })
+src/screens/organizer/EventScreen.js:      const response = await fetch(`${API_BASE_URL}/staff/events`, {
