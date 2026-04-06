@@ -169,7 +169,6 @@ export default function LoginScreen({ navigation }) {
                 onPress={handleLogin}>
                 <View style={styles.loginBtnInner}>
                   <Text style={styles.loginBtnText}>SIGN IN</Text>
-                  <Text style={styles.loginBtnArrow}>→</Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -473,11 +472,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 2.5,
-  },
-  loginBtnArrow: {
-    color: '#050A14',
-    fontSize: 18,
-    fontWeight: '700',
   },
 
   // Divider

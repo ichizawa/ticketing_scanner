@@ -135,7 +135,6 @@ export default function EventScreen({ navigation }) {
           <Header navigation={navigation} />
           <View style={styles.centerContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            {/* Added a TouchableOpacity wrapper for the retry action */}
             <View style={styles.retryBtn}>
               <Text onPress={() => fetchEvents()} style={{ color: '#4A8AAF', fontSize: 12, fontWeight: '800' }}>RETRY</Text>
             </View>
