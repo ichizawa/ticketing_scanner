@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AuthContext } from '../../context/AuthContext'
 import Header from '../../components/Header'
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 
 const { width } = Dimensions.get('window');
 
@@ -73,8 +73,8 @@ export default function HomeScreen({ navigation }) {
         return;
       }
 
-      console.log('Fetching events from:', `${API_BASE_URL}/user/events`);
-      
+      // console.log('Fetching events from:', `${API_BASE_URL}/user/events`);
+
       const response = await fetch(`${API_BASE_URL}/users/events`, {
         headers: {
           "Authorization": `Bearer ${userInfo.token}`,
@@ -117,8 +117,8 @@ export default function HomeScreen({ navigation }) {
   };
 
   const heroData = events.slice(0, 3);
-  const clonedHeroEvents = heroData.length > 0 
-    ? [heroData[heroData.length - 1], ...heroData, heroData[0]] 
+  const clonedHeroEvents = heroData.length > 0
+    ? [heroData[heroData.length - 1], ...heroData, heroData[0]]
     : [];
 
   // Auto-scroll logic
@@ -143,7 +143,7 @@ export default function HomeScreen({ navigation }) {
           setActiveIndex(nextIndex);
         }
       }, 100); // 100ms transition time
-    }, 3000); // 3 seconds interval
+    }, 5000); // 5 seconds interval
 
     return () => clearInterval(interval);
   }, [activeIndex, clonedHeroEvents.length]);
@@ -194,8 +194,8 @@ export default function HomeScreen({ navigation }) {
       <SafeAreaView style={styles.safeArea}>
         <Header navigation={navigation} />
 
-        <ScrollView 
-          showsVerticalScrollIndicator={false} 
+        <ScrollView
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
@@ -214,17 +214,24 @@ export default function HomeScreen({ navigation }) {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={handleScroll}
-              contentOffset={{ x: width, y: 0 }} 
+              contentOffset={{ x: width, y: 0 }}
               style={styles.heroCarousel}
             >
               {clonedHeroEvents.map((event, idx) => (
                 <View key={`${event.id}-${idx}`} style={styles.heroCard}>
-                  <ImageBackground source={{ uri: getImageUrl(event.event_image) }} style={styles.heroBg}>
+                  <ImageBackground
+                    source={{ uri: event.event_image_url || getImageUrl(event.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+                    style={styles.heroBg}
+                  >
                     <LinearGradient
                       colors={['transparent', 'rgba(5,10,20,0.9)']}
                       style={styles.heroOverlay}
                     >
-                      <View style={styles.heroTag}><Text style={styles.heroTagText}>{event.event_category || 'EVENT'}</Text></View>
+                      <View style={styles.heroTag}>
+                        <Text style={styles.heroTagText}>
+                          {(event.category || event.event_category || 'EVENT').toUpperCase()}
+                        </Text>
+                      </View>
                       <Text style={styles.heroTitle}>{event.event_name}</Text>
                       <Text style={styles.heroSubtitle}>{event.event_description}</Text>
 
@@ -240,8 +247,17 @@ export default function HomeScreen({ navigation }) {
               ))}
             </ScrollView>
           ) : !error && (
-            <View style={styles.emptyHero}>
-              <Text style={styles.emptyHeroText}>No Featured Events Found</Text>
+            <View style={styles.heroCard}>
+              <LinearGradient
+                colors={['#132035', '#050A14']}
+                style={styles.emptyHeroGradient}
+              >
+                <View style={[styles.heroTag, { backgroundColor: 'rgba(0,194,255,0.1)' }]}>
+                  <Text style={[styles.heroTagText, { color: '#00C2FF' }]}>WELCOME</Text>
+                </View>
+                <Text style={styles.heroTitle}>Discover Your Next Adventure</Text>
+                <Text style={styles.heroSubtitle}>Stay tuned for the most exciting festivals and events in town.</Text>
+              </LinearGradient>
             </View>
           )}
 
@@ -254,24 +270,31 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Don't Miss This Week - Vertical List */}
+          {/* Don't Miss This Week */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Don't Miss This Week</Text>
-            
-            {/* Logic: Show next 3, or if very few, show all avoiding duplicates if needed */}
+
+            {/* Show next 3, or if very few, show all avoiding duplicates if needed */}
             {events.length > 0 ? (
               events.slice(3, 8).length > 0 ? (
                 events.slice(3, 8).map(item => (
                   <View key={item.id} style={styles.verticalCard}>
                     <View style={styles.vCardTop}>
-                      <Image source={{ uri: getImageUrl(item.event_image) }} style={styles.vCardImg} />
+                      <Image
+                        source={{ uri: item.event_image_url || getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+                        style={styles.vCardImg}
+                      />
                       <TouchableOpacity
                         style={styles.heartBtn}
                         onPress={() => toggleFavorite(item.id)}
                       >
                         <Text style={styles.heartIcon}>{favorites.includes(item.id) ? '❤️' : '🤍'}</Text>
                       </TouchableOpacity>
-                      <View style={styles.vGenreTag}><Text style={styles.vGenreText}>{item.event_category || 'EVENT'}</Text></View>
+                      <View style={styles.vGenreTag}>
+                        <Text style={styles.vGenreText}>
+                          {(item.category || item.event_category || 'EVENT').toUpperCase()}
+                        </Text>
+                      </View>
                     </View>
                     <View style={styles.vCardBottom}>
                       <View style={styles.vCardLeft}>
@@ -343,13 +366,8 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#050A14'
-  },
-  safeArea: {
-    flex: 1
-  },
+  root: { flex: 1, backgroundColor: '#050A14' },
+
   bgOrb1: {
     position: 'absolute', width: 400, height: 400, borderRadius: 200,
     backgroundColor: '#00C2FF', top: -100, right: -100, opacity: 0.04,
@@ -358,90 +376,91 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 300, height: 300, borderRadius: 150,
     backgroundColor: '#FF5733', bottom: -50, left: -100, opacity: 0.03,
   },
-  // Styles for the Sync Button Header
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', marginBottom: 20 },
-  refreshText: { color: '#00C2FF', fontSize: 13, fontWeight: '600' },
 
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: 10,
-  },
-  
+  safeArea: { flex: 1 },
+  scrollContent: { paddingTop: 10, paddingBottom: 40 },
+
   centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#4A8AAF',
-    fontWeight: '600',
-    letterSpacing: 1,
+    marginTop: 16, fontSize: 14, color: '#4A8AAF', fontWeight: '600', letterSpacing: 1,
   },
-  errorBanner: {
-    marginHorizontal: 20,
-    padding: 16,
-    backgroundColor: 'rgba(255, 77, 106, 0.1)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 77, 106, 0.2)',
-    marginBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
+
+  // Hero Carousel
+  heroCarousel: { marginBottom: 32 },
+  heroCard: { width: width, height: 500 },
+  heroBg: { flex: 1 },
+  heroOverlay: { flex: 1, padding: 24, justifyContent: 'flex-end' },
+  heroTag: {
+    alignSelf: 'flex-start', backgroundColor: '#00C2FF',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 12
   },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#FF4D6A',
-    fontWeight: '600',
+  heroTagText: { color: '#000', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  heroTitle: { color: '#FFF', fontSize: 38, fontWeight: '900', letterSpacing: -1, marginBottom: 8, lineHeight: 40, width: '75%' },
+  heroSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: '500', marginBottom: 24, width: '70%', lineHeight: 22 },
+  heroFab: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF', paddingHorizontal: 22, paddingVertical: 14, borderRadius: 16,
+    shadowColor: '#FFF', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10
   },
-  retryBtn: {
-    backgroundColor: '#FF4D6A',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginLeft: 12
+  heroFabText: { color: '#000', fontWeight: '800', fontSize: 13 },
+
+  emptyHeroGradient: {
+    flex: 1, padding: 24, justifyContent: 'flex-end',
   },
-  retryText: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '800'
-  },
-  emptyHero: {
-    width: width - 40,
-    height: 200,
-    marginHorizontal: 20,
-    backgroundColor: '#0B1623',
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#132035',
-    marginBottom: 32
-  },
-  emptyHeroText: {
-    color: '#4A8AAF',
-    fontSize: 14,
-    fontWeight: '600'
-  },
+
+  // Sections
+  section: { marginBottom: 32, paddingHorizontal: 20 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800' },
+  seeMoreBtn: { color: '#00C2FF', fontSize: 13, fontWeight: '700' },
   emptySectionText: {
-    color: '#3D6080',
-    fontSize: 14,
-    fontStyle: 'italic',
-    marginTop: -10,
-    marginBottom: 20
+    color: '#3D6080', fontSize: 14, fontStyle: 'italic', marginTop: -10, marginBottom: 20
   },
-  
+
+  // Vertical Cards (Don't Miss)
+  verticalCard: {
+    height: 340, backgroundColor: '#0B1623', borderRadius: 24,
+    marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#132035'
+  },
+  vCardTop: { height: '70%', position: 'relative' },
+  vCardImg: { ...StyleSheet.absoluteFillObject },
+  heartBtn: {
+    position: 'absolute', top: 16, right: 16,
+    backgroundColor: 'rgba(0,0,0,0.3)', width: 40, height: 40,
+    borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
+  },
+  heartIcon: { fontSize: 18 },
+  vGenreTag: {
+    position: 'absolute', bottom: 12, left: 12,
+    backgroundColor: 'rgba(5,10,20,0.8)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6
+  },
+  vGenreText: { color: '#00C2FF', fontSize: 10, fontWeight: '700' },
+  vCardBottom: { height: '30%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
+  vCardLeft: { flex: 1 },
+  vCardTitle: { color: '#FFF', fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  vCardLoc: { color: '#4A8AAF', fontSize: 12, fontWeight: '600' },
+  vCardDate: { color: '#3D6080', fontSize: 11, fontWeight: '500' },
+  vCardBuyBtn: {
+    backgroundColor: '#00C2FF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+    shadowColor: '#00C2FF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4
+  },
+  vCardBuyText: { color: '#000', fontWeight: '800', fontSize: 12 },
+
+  // Error Banner
+  errorBanner: {
+    marginHorizontal: 20, padding: 16,
+    backgroundColor: 'rgba(255, 77, 106, 0.1)', borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(255, 77, 106, 0.2)',
+    marginBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+  },
+  errorText: { flex: 1, fontSize: 13, color: '#FF4D6A', fontWeight: '600' },
+  retryBtn: {
+    backgroundColor: '#FF4D6A', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginLeft: 12
+  },
+  retryText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
+
   // List Cards
   listCard: {
     flexDirection: 'row', alignItems: 'center',
