@@ -98,14 +98,13 @@ export default function HomeScreen({ navigation }) {
       // Update state after animation would typically finish
       setTimeout(() => {
         if (nextIndex >= clonedHeroEvents.length - 1) {
-          // If at the clone of the first item, jump back to the actual first item
           scrollRef.current?.scrollTo({ x: width, animated: false });
           setActiveIndex(1);
         } else {
           setActiveIndex(nextIndex);
         }
-      }, 100); // 100ms transition time
-    }, 3000); // 3 seconds interval
+      }, 100); 
+    }, 3000); 
 
     return () => clearInterval(interval);
   }, [activeIndex, clonedHeroEvents.length]);

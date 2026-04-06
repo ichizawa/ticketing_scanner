@@ -348,7 +348,6 @@ export default function ScannerScreen({ navigation }) {
             { value: scanCount, label: 'SCANNED', color: '#FFFFFF' },
             { value: successCount, label: 'VALID', color: '#00E5A0' },
             { value: scanCount - successCount, label: 'REJECTED', color: '#FF4D6A' },
-            { value: 142, label: 'REMAINING', color: '#FFB84D' },
           ].map((s, i) => (
             <React.Fragment key={s.label}>
               {i > 0 && <View style={styles.statDivider} />}

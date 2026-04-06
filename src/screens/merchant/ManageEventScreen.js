@@ -37,12 +37,6 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
-const getStatusColor = (status) => {
-  const s = String(status || '').toUpperCase();
-  if (s === 'LIVE' || s === 'ACTIVE' || s === 'ON LIVE') return '#00E5A0';
-  if (s === 'COMPLETED' || s === 'DONE LIVE' || s === 'PAST') return '#3D6080';
-  return '#00C2FF';
-};
 
 // Helper function to return the correct label and base color
 const getStatusConfig = (statusCode) => {
