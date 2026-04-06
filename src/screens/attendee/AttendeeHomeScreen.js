@@ -35,9 +35,6 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
-// Mock 
-
-
 const REFINED_EXPLORE = [
   { id: 1, title: 'Tech Summit 2026', venue: 'Innovation Hub', time: '9:00 AM', date: 'MAR 22' },
   { id: 2, title: 'Electronic Paradise', venue: 'Downtown Arena', time: '8:00 PM', date: 'MAR 25' },
@@ -95,7 +92,6 @@ export default function HomeScreen({ navigation }) {
         animated: true,
       });
 
-      // Update state after animation would typically finish
       setTimeout(() => {
         if (nextIndex >= clonedHeroEvents.length - 1) {
           // If at the clone of the first item, jump back to the actual first item
@@ -151,7 +147,7 @@ export default function HomeScreen({ navigation }) {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={handleScroll}
-              contentOffset={{ x: width, y: 0 }} // Start at first real item
+              contentOffset={{ x: width, y: 0 }} 
               style={styles.heroCarousel}
             >
               {clonedHeroEvents.map((event, idx) => (
