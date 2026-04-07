@@ -1,79 +1,57 @@
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Animated } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, Alert } from 'react-native'
 import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import NetInfo from '@react-native-community/netinfo'
 import { AuthContext } from '../../context/AuthContext'
-import Header from '../../components/Header'; 
+import Header from '../../components/Header'
+import { API_BASE_URL } from '../../config'; 
 
 
 const { width } = Dimensions.get('window')
 
-const EVENTS = [
-  {
-    id: 'e1',
-    name: 'MediaOne Summer Fest 2025',
-    venue: 'Grand Plaza Arena',
-    date: 'Tonight, 7:00 PM',
-    status: 'LIVE',
-    statusColor: '#00E5A0',
-    accentColor: '#00C2FF',
-    totalCheckedIn: 842,
-    totalCapacity: 1200,
-    categories: [
-      { id: 1, name: 'VVIP Backstage',    checkedIn: 45,  capacity: 50,  color: '#FFD700', icon: '👑' },
-      { id: 2, name: 'VIP — GA Floor',    checkedIn: 210, capacity: 300, color: '#00C2FF', icon: '💎' },
-      { id: 3, name: 'Early Bird',         checkedIn: 450, capacity: 500, color: '#00E5A0', icon: '🐣' },
-      { id: 4, name: 'General Admission', checkedIn: 137, capacity: 350, color: '#FF4D6A', icon: '🎫' },
-    ],
-  },
-  {
-    id: 'e2',
-    name: 'Neon Horizon Music Festival',
-    venue: 'Sunken Gardens Amphitheater',
-    date: 'Sat, Apr 19 · 8:00 PM',
-    status: 'UPCOMING',
-    statusColor: '#FFB84D',
-    accentColor: '#A855F7',
-    totalCheckedIn: 0,
-    totalCapacity: 500,
-    categories: [
-      { id: 1, name: 'VIP Access',        checkedIn: 0,  capacity: 100, color: '#FFD700', icon: '👑' },
-      { id: 2, name: 'General Admission', checkedIn: 0,  capacity: 300, color: '#A855F7', icon: '🎫' },
-      { id: 3, name: 'Student Pass',      checkedIn: 0,  capacity: 100, color: '#00E5A0', icon: '🎓' },
-    ],
-  },
-  {
-    id: 'e3',
-    name: 'CDO Tech Summit 2026',
-    venue: 'Xavier University Covered Court',
-    date: 'Fri, Jun 12 · 9:00 AM',
-    status: 'UPCOMING',
-    statusColor: '#FFB84D',
-    accentColor: '#00E5A0',
-    totalCheckedIn: 97,
-    totalCapacity: 400,
-    categories: [
-      { id: 1, name: 'Speaker Pass',  checkedIn: 22,  capacity: 50,  color: '#00E5A0', icon: '🎤' },
-      { id: 2, name: 'Pro Attendee',  checkedIn: 65,  capacity: 200, color: '#00C2FF', icon: '💼' },
-      { id: 3, name: 'Student Dev',   checkedIn: 10,  capacity: 150, color: '#FF4D6A', icon: '🧑‍💻' },
-    ],
-  },
-  {
-    id: 'e4',
-    name: 'Lechon & Beats Food Fest',
-    venue: 'Pueblo de Oro Grounds',
-    date: 'Sun, May 4 · 11:00 AM',
-    status: 'SELLING',
-    statusColor: '#FF9500',
-    accentColor: '#FF6B35',
-    totalCheckedIn: 0,
-    totalCapacity: 300,
-    categories: [
-      { id: 1, name: 'Early Bird', checkedIn: 0, capacity: 100, color: '#FF6B35', icon: '🐦' },
-      { id: 2, name: 'Regular',    checkedIn: 0, capacity: 150, color: '#FFB84D', icon: '🎟️' },
-      { id: 3, name: 'Group of 5', checkedIn: 0, capacity: 50,  color: '#00E5A0', icon: '👥' },
-    ],
-  },
-]
+const formatTime = (time) => {
+  if (!time) return 'TBA'
+  try {
+    const parts = time.split(':')
+    if (parts.length < 2) return time
+    let h = parseInt(parts[0], 10)
+    const m = parts[1]
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    h = h % 12 || 12
+    return `${h}:${m} ${ampm}`
+  } catch (e) {
+    return time
+  }
+}
+
+const getStatusConfig = (statusCode) => {
+  switch (statusCode) {
+    case 0: return { label: 'UPCOMING', color: '#FFAA00' }
+    case 1: return { label: 'ACTIVE', color: '#00E5A0' }
+    case 2: return { label: 'ONGOING', color: '#00C2FF' }
+    case 3: return { label: 'COMPLETED', color: '#4B4B4B' }
+    default: return { label: 'CANCELLED', color: '#FF4D6A' }
+  }
+}
+
+const transformEvent = (apiEvent) => {
+  const statusConfig = getStatusConfig(apiEvent.status)
+  const statusStr = String(apiEvent.status || '').toUpperCase()
+
+  return {
+    id: apiEvent.id?.toString() || Math.random().toString(),
+    name: apiEvent.event_name || 'Unnamed Event',
+    venue: apiEvent.event_venue || 'TBA',
+    date: `${apiEvent.event_date || 'TBA'} • ${formatTime(apiEvent.event_time)}`,
+    status: statusConfig.label,
+    statusColor: statusConfig.color,
+    accentColor: statusConfig.color,
+    statusCode: apiEvent.status,
+    totalCheckedIn: 0, 
+    totalCapacity: 0,  
+    categories: [],    
+  }
+}
 
 const BgOrbs = () => (
   <>
@@ -83,7 +61,21 @@ const BgOrbs = () => (
 )
 
 function EventSelectionView({ onSelect, navigation }) {
+  const { userInfo } = useContext(AuthContext)
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(null)
+  const [isConnected, setIsConnected] = useState(true)
+
   const pulseAnim = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(Boolean(state.isConnected))
+    })
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     Animated.loop(
@@ -94,6 +86,163 @@ function EventSelectionView({ onSelect, navigation }) {
     ).start()
   }, [])
 
+  useEffect(() => {
+    if (userInfo?.token) {
+      fetchEvents()
+    } else {
+      setLoading(false)
+      setError('Please login to view events')
+    }
+  }, [userInfo])
+
+  const fetchEvents = async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true)
+      setError(null)
+
+      if (!isConnected) throw new Error('No internet connection')
+      if (!userInfo?.token) throw new Error('Not authenticated')
+
+      const response = await fetch(`${API_BASE_URL}/staff/events`, {
+        headers: {
+          "Authorization": `Bearer ${userInfo.token}`,
+          "Accept": "application/json"
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`)
+      }
+
+      const json = await response.json()
+      const eventData = json.data || json.events || json
+
+    
+      const transformedEvents = await Promise.all(
+        (Array.isArray(eventData) ? eventData : []).map(async (apiEvent) => {
+          const baseEvent = transformEvent(apiEvent)
+
+        
+          try {
+            const [scanResponse, ticketsResponse] = await Promise.all([
+              fetch(`${API_BASE_URL}/staff/tickets/scanned?event_id=${apiEvent.id}`, {
+                headers: {
+                  "Authorization": `Bearer ${userInfo.token}`,
+                  "Accept": "application/json"
+                }
+              }),
+              fetch(`${API_BASE_URL}/staff/tickets`, {
+                headers: {
+                  "Authorization": `Bearer ${userInfo.token}`,
+                  "Accept": "application/json"
+                }
+              })
+            ])
+
+            // Get scanned count
+            let scannedCount = 0
+            if (scanResponse.ok) {
+              const scanJson = await scanResponse.json()
+              scannedCount = typeof scanJson.data === 'number' ? scanJson.data : 0
+            }
+
+            // Get total capacity and categories
+            let totalCapacity = 0
+            let categories = []
+            if (ticketsResponse.ok) {
+              const ticketsJson = await ticketsResponse.json()
+              const allTickets = ticketsJson.data || ticketsJson.tickets || ticketsJson
+              const eventTickets = Array.isArray(allTickets)
+                ? allTickets.filter(t => t.event_id == apiEvent.id)
+                : []
+
+              totalCapacity = eventTickets.reduce((sum, t) => sum + (parseInt(t.original_qty) || 0), 0)
+
+              const ticketTypes = {}
+              eventTickets.forEach(ticket => {
+                const typeName = ticket.type || 'General'
+                if (!ticketTypes[typeName]) {
+                  ticketTypes[typeName] = {
+                    id: Object.keys(ticketTypes).length + 1,
+                    name: typeName,
+                    checkedIn: 0, 
+                    capacity: 0,
+                    color: '#00C2FF', 
+                    icon: '🎫'
+                  }
+                }
+                ticketTypes[typeName].capacity += parseInt(ticket.original_qty) || 0
+              })
+
+              categories = Object.values(ticketTypes)
+            }
+
+            return {
+              ...baseEvent,
+              totalCheckedIn: scannedCount,
+              totalCapacity: totalCapacity,
+              categories: categories
+            }
+          } catch (err) {
+            console.error(`Error fetching data for event ${apiEvent.id}:`, err)
+            return baseEvent 
+          }
+        })
+      )
+
+      setEvents(transformedEvents)
+    } catch (err) {
+      setError(err.message || 'Failed to load events')
+      console.error('Error fetching events:', err)
+    } finally {
+      setLoading(false)
+      if (isRefresh) setRefreshing(false)
+    }
+  }
+
+  const onRefresh = () => {
+    if (isConnected) {
+      setRefreshing(true)
+      fetchEvents(true)
+    } else {
+      setError('No internet connection')
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+        <BgOrbs />
+        <SafeAreaView style={styles.safeArea}>
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#00C2FF" />
+            <Text style={styles.loadingText}>Loading events...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+
+  if (error) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+        <BgOrbs />
+        <SafeAreaView style={styles.safeArea}>
+          <Header navigation={navigation} />
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => fetchEvents()}>
+              <Text style={styles.retryText}>RETRY</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
@@ -103,7 +252,11 @@ function EventSelectionView({ onSelect, navigation }) {
 
        <Header navigation={navigation} />
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00C2FF" />}
+        >
 
           <View style={styles.pageHeadRow}>
             <View>
@@ -112,6 +265,13 @@ function EventSelectionView({ onSelect, navigation }) {
             </View>
             <Animated.View style={[styles.pulseOrb, { transform: [{ scale: pulseAnim }] }]} />
           </View>
+
+          {!isConnected && (
+            <View style={styles.offlineBanner}>
+              <Text style={styles.offlineBannerTitle}>OFFLINE</Text>
+              <Text style={styles.offlineBannerText}>Connect to the internet to get live attendance updates.</Text>
+            </View>
+          )}
 
           <View style={styles.searchBar}>
             <Text style={styles.searchIconChar}>⌕</Text>
@@ -128,10 +288,10 @@ function EventSelectionView({ onSelect, navigation }) {
           </ScrollView>
 
           {/* Event cards */}
-          {EVENTS.map((ev) => {
+          {events.map((ev) => {
             const pct = ev.totalCapacity > 0
               ? Math.round((ev.totalCheckedIn / ev.totalCapacity) * 100) : 0
-            const isLive = ev.status === 'LIVE'
+            const isLive = ev.status === 'ACTIVE' || ev.status === 'ONGOING'
 
             return (
               <TouchableOpacity
@@ -174,11 +334,16 @@ function EventSelectionView({ onSelect, navigation }) {
 
                 {/* Category pills */}
                 <View style={styles.catPillRow}>
-                  {ev.categories.map((c) => (
+                  {ev.categories.slice(0, 3).map((c) => (
                     <View key={c.id} style={[styles.catPill, { backgroundColor: c.color + '18' }]}>
                       <Text style={styles.catPillText}>{c.icon} {c.name}</Text>
                     </View>
                   ))}
+                  {ev.categories.length > 3 && (
+                    <View style={[styles.catPill, { backgroundColor: '#4A8AAF18' }]}>
+                      <Text style={styles.catPillText}>+{ev.categories.length - 3} more</Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Footer */}
@@ -191,6 +356,12 @@ function EventSelectionView({ onSelect, navigation }) {
             )
           })}
 
+          {events.length === 0 && (
+            <View style={[styles.centerContainer, { marginTop: 60 }]}>
+              <Text style={styles.noDataText}>No events found</Text>
+            </View>
+          )}
+
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
@@ -198,7 +369,7 @@ function EventSelectionView({ onSelect, navigation }) {
   )
 }
 
-function AttendanceReportView({ event, onBack, handleLogout }) {
+function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
   const progressAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -348,6 +519,7 @@ export default function AttendeeTrackScreen({ navigation }) {
       event={selectedEvent}
       onBack={() => setSelectedEvent(null)}
       handleLogout={handleLogout}
+      navigation={navigation}
     />
   )
 }
@@ -474,4 +646,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#0B1623', marginTop: 4,
   },
   switchBtnText: { color: '#3D6080', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#4A8AAF',
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#FF4D6A',
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#4A8AAF',
+    textAlign: 'center',
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  retryBtn: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#132035',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#0B1623',
+  },
+  retryText: { color: '#4A8AAF', fontSize: 12, fontWeight: '800' },
+
+  offlineBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#3B1118',
+    borderWidth: 1,
+    borderColor: '#6D2430',
+  },
+  offlineBannerTitle: {
+    color: '#FFD5DB',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 2,
+  },
+  offlineBannerText: {
+    color: '#FFB7C2',
+    fontSize: 12,
+  },
 })

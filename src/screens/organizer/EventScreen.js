@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
@@ -43,6 +43,7 @@ const transformEvent = (apiEvent) => {
     schedule: `${apiEvent.event_date || 'TBA'} • ${formatTime(apiEvent.event_time)}`,
     status: statusConfig.label,
     statusColor: statusConfig.color,
+    statusCode: apiEvent.status,
   };
 };
 
@@ -184,11 +185,13 @@ export default function EventScreen({ navigation }) {
             const pct = ev.totalTickets > 0 ? Math.round((ev.scanned / ev.totalTickets) * 100) : 0;
 
             return (
-              <View
+              <TouchableOpacity
                 key={ev.id}
                 style={[
                   styles.eventCard,
                 ]}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('EventOrganizer', { event: ev })}
               >
                 <View style={styles.cardTopRow}>
                   <View style={[styles.statusPill, { backgroundColor: ev.statusColor + '18' }]}>
@@ -210,7 +213,7 @@ export default function EventScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={{ height: 16 }} /> 
-              </View>
+              </TouchableOpacity>
             );
           })}
 

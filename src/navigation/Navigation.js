@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import LoginScreen from "../screens/auth/LoginScreen";
 import DrawerNavigation from "./DrawerNavigation";
 import ScannerScreen from '../screens/organizer/ScannerScreen';
+import EventOrganizerScreen from '../screens/organizer/EventOrganizerScreen';
 import { AuthContext } from '../context/AuthContext';
 import EventDetailsScreen from '../screens/merchant/EventDetailsScreen';
 
@@ -46,6 +47,7 @@ export default function Navigation() {
                             />
                         )}
                         <Stack.Screen name="EventDetails" component={EventDetailsScreen} />
+                        <Stack.Screen name="EventOrganizer" component={EventOrganizerScreen} />
                     </>
                 )}
             </Stack.Navigator>
