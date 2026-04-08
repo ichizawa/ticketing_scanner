@@ -117,14 +117,13 @@ function EventSelectionView({ onSelect, navigation }) {
       const json = await response.json()
       const eventData = json.data || json.events || json
 
-    
       const transformedEvents = await Promise.all(
         (Array.isArray(eventData) ? eventData : []).map(async (apiEvent) => {
           const baseEvent = transformEvent(apiEvent)
 
-        
           try {
-            const [scanResponse, ticketsResponse] = await Promise.all([
+            // Added the new ticket-category API to the Promise.all array
+            const [scanResponse, ticketsResponse, categoryScannedResponse] = await Promise.all([
               fetch(`${API_BASE_URL}/staff/tickets/scanned?event_id=${apiEvent.id}`, {
                 headers: {
                   "Authorization": `Bearer ${userInfo.token}`,
@@ -136,19 +135,24 @@ function EventSelectionView({ onSelect, navigation }) {
                   "Authorization": `Bearer ${userInfo.token}`,
                   "Accept": "application/json"
                 }
+              }),
+              fetch(`${API_BASE_URL}/staff/ticket-category/scanned/${apiEvent.id}`, {
+                headers: {
+                  "Authorization": `Bearer ${userInfo.token}`,
+                  "Accept": "application/json"
+                }
               })
             ])
 
-            // Get scanned count
             let scannedCount = 0
             if (scanResponse.ok) {
               const scanJson = await scanResponse.json()
               scannedCount = typeof scanJson.data === 'number' ? scanJson.data : 0
             }
 
-            // Get total capacity and categories
             let totalCapacity = 0
-            let categories = []
+            let ticketTypes = {}
+            
             if (ticketsResponse.ok) {
               const ticketsJson = await ticketsResponse.json()
               const allTickets = ticketsJson.data || ticketsJson.tickets || ticketsJson
@@ -158,7 +162,6 @@ function EventSelectionView({ onSelect, navigation }) {
 
               totalCapacity = eventTickets.reduce((sum, t) => sum + (parseInt(t.original_qty) || 0), 0)
 
-              const ticketTypes = {}
               eventTickets.forEach(ticket => {
                 const typeName = ticket.type || 'General'
                 if (!ticketTypes[typeName]) {
@@ -167,21 +170,42 @@ function EventSelectionView({ onSelect, navigation }) {
                     name: typeName,
                     checkedIn: 0, 
                     capacity: 0,
-                    color: '#00C2FF', 
+                    color: typeName.toUpperCase().includes('VIP') ? '#FFAA00' : '#00C2FF', 
                     icon: '🎫'
                   }
                 }
                 ticketTypes[typeName].capacity += parseInt(ticket.original_qty) || 0
               })
+            }
 
-              categories = Object.values(ticketTypes)
+            if (categoryScannedResponse && categoryScannedResponse.ok) {
+              const catScannedJson = await categoryScannedResponse.json()
+              const scannedData = catScannedJson.data || []
+
+              scannedData.forEach(scanned => {
+                const typeName = scanned.type || 'General'
+                if (ticketTypes[typeName]) {
+                  
+                  ticketTypes[typeName].checkedIn = scanned.count
+                } else {
+                  // Fallback: If a scanned ticket type somehow isn't in the main tickets array
+                  ticketTypes[typeName] = {
+                    id: Object.keys(ticketTypes).length + 1,
+                    name: typeName,
+                    checkedIn: scanned.count,
+                    capacity: 0, 
+                    color: '#00E5A0',
+                    icon: '🎫'
+                  }
+                }
+              })
             }
 
             return {
               ...baseEvent,
               totalCheckedIn: scannedCount,
               totalCapacity: totalCapacity,
-              categories: categories
+              categories: Object.values(ticketTypes)
             }
           } catch (err) {
             console.error(`Error fetching data for event ${apiEvent.id}:`, err)
