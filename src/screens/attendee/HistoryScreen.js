@@ -1,82 +1,125 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Dimensions, StatusBar, Image, Platform, FlatList, Modal } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Dimensions, StatusBar, Image, Platform, FlatList, Modal, ActivityIndicator, RefreshControl, Alert } from 'react-native'
 import React, { useState, useRef, useEffect, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
 import { BlurView } from 'expo-blur'
 import Header from '../../components/Header'
+import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 
 const { width, height } = Dimensions.get('window')
 
-// --- Mock Data ---
-const PURCHASE_HISTORY = [
-    {
-        id: 'TXN-77291',
-        title: 'ASCENSION MUSIC FESTIVAL',
-        date: 'MAR 28, 2026',
-        venue: 'Philippine Arena',
-        status: 'Upcoming',
-        image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400',
-        breakdown: [
-            { tier: 'SVIP Reserved', qty: 2, price: 12500 },
-            { tier: 'Gold Standing', qty: 1, price: 7500 }
-        ],
-        total: 32500,
-        qrToken: 'AUTH-V4-9281-XM2'
-    },
-    {
-        id: 'TXN-66102',
-        title: 'ELECTRONIC PARADISE',
-        date: 'FEB 15, 2026',
-        venue: 'Downtown Arena',
-        status: 'Past',
-        image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400',
-        breakdown: [
-            { tier: 'General Admission', qty: 3, price: 3500 }
-        ],
-        total: 10500,
-        qrToken: 'EXPIRED-772-AL2'
-    },
-    {
-        id: 'TXN-55092',
-        title: 'TECH SUMMIT 2026',
-        date: 'JAN 20, 2026',
-        venue: 'Innovation Hub',
-        status: 'Cancelled',
-        image: 'https://images.unsplash.com/photo-1540575861501-7c03b177a2a5?auto=format&fit=crop&q=80&w=400',
-        breakdown: [
-            { tier: 'Delegate Pass', qty: 1, price: 5000 }
-        ],
-        total: 5000,
-        qrToken: null
+// --- Helper Functions ---
+const formatTime = (time) => {
+    if (!time) return 'TBA';
+    try {
+        const parts = time.split(':');
+        if (parts.length < 2) return time;
+        let h = parseInt(parts[0], 10);
+        const m = parts[1];
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${h}:${m} ${ampm}`;
+    } catch (e) {
+        return time;
     }
-];
+};
+
+const getImageUrl = (path) => {
+    if (!path || path === 'null') return null;
+    if (path.startsWith('http')) return path;
+
+    const baseUrl = IMAGE_BASE_URL.endsWith('/')
+        ? IMAGE_BASE_URL.slice(0, -1)
+        : IMAGE_BASE_URL;
+
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return `${baseUrl}/storage/${cleanPath}`;
+};
 
 export default function HistoryScreen({ navigation }) {
-    const { logout } = useContext(AuthContext);
+    const { userInfo, logout } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('Upcoming');
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [qrVisible, setQrVisible] = useState(false);
+    const [history, setHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(null);
 
-    // QR Animation
-    const borderAnim = useRef(new Animated.Value(0)).current;
+    const fetchHistory = async (isRefresh = false) => {
+        try {
+            if (!isRefresh) setLoading(true);
+            setError(null);
+
+            if (!userInfo?.token) {
+                throw new Error('Not authenticated');
+            }
+
+            console.log('Fetching history with token:', userInfo.token.substring(0, 20) + '...');
+            console.log('API URL:', `${API_BASE_URL}/users/purchase-history`);
+
+            const response = await fetch(`${API_BASE_URL}/users/purchase-history`, {
+                headers: {
+                    "Authorization": `Bearer ${userInfo.token}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                throw new Error(`HTTP Error: ${response.status}`);
+            }
+
+            const json = await response.json();
+            console.log('API Response:', json);
+
+            const eventsList = json.events || [];
+            
+            // Extract customerTickets and merge with sale (event) data
+            let historyData = [];
+            if (json.customerTickets && Array.isArray(json.customerTickets)) {
+                historyData = json.customerTickets.map(ticket => {
+                    const eventId = ticket.sale?.event_id;
+                    const eventDetails = eventsList.find(e => e.id === eventId);
+                    return {
+                    ...ticket,
+                    event_name: eventDetails?.event_name || 'Unknown Event',
+                    event_date: eventDetails?.event_date || null,
+                    event_time: eventDetails?.event_time || null,
+                    event_venue: eventDetails?.event_venue || 'TBA',
+                    event_image: eventDetails?.event_image_url || eventDetails?.event_image || null,
+                    category: eventDetails?.category || 'EVENT',
+                    status: ticket.sale?.status || ticket.status || 1,
+                    status_text: ticket.sale?.status || null,
+                };
+            });
+        }
+            
+            console.log('Parsed history data:', historyData);
+            
+            setHistory(historyData);
+        } catch (err) {
+            setError(err.message || 'Failed to load purchase history');
+            console.error('Error fetching history:', err);
+        } finally {
+            setLoading(false);
+            if (isRefresh) setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
-        if (qrVisible) {
-            // Pulsing border animation
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(borderAnim, { toValue: 1, duration: 1500, useNativeDriver: false }),
-                    Animated.timing(borderAnim, { toValue: 0, duration: 1500, useNativeDriver: false })
-                ])
-            ).start();
-
-            // Simulate Auto-Brightness Trigger
-            console.log('HISTORY: Triggering 100% Screen Brightness for QR Scanning');
+        if (userInfo?.token) {
+            fetchHistory();
         } else {
-            borderAnim.stopAnimation();
-            console.log('HISTORY: Restoring Default Screen Brightness');
+            setLoading(false);
         }
-    }, [qrVisible]);
+    }, [userInfo]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchHistory(true);
+    };
 
     const handleLogout = () => {
         Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -85,7 +128,23 @@ export default function HistoryScreen({ navigation }) {
         ]);
     };
 
-    const filteredData = PURCHASE_HISTORY.filter(item => item.status === activeTab);
+    const filteredData = history.filter(item => {
+        const itemStatus = item.status?.toString().toLowerCase();
+        const tab = activeTab.toLowerCase();
+
+        // Map API statuses to tabs
+        if (tab === 'upcoming') {
+            return itemStatus === 'upcoming' || itemStatus === 'active' || itemStatus === '1';
+        }
+        if (tab === 'past') {
+            return itemStatus === 'past' || itemStatus === 'completed' || itemStatus === '2';
+        }
+        if (tab === 'cancelled') {
+            return itemStatus === 'cancelled' || itemStatus === '3';
+        }
+
+        return itemStatus === tab;
+    });
 
     const renderHeader = () => (
         <Header navigation={navigation} />
@@ -106,70 +165,67 @@ export default function HistoryScreen({ navigation }) {
         </View>
     );
 
-    const renderOrderCard = ({ item }) => (
-        <View style={styles.orderCard}>
-            <View style={styles.cardHeader}>
-                <View>
-                    <Text style={styles.txnId}>{item.id}</Text>
-                    <Text style={styles.orderDate}>{item.date}</Text>
-                </View>
-                <View style={[styles.statusBadge,
-                item.status === 'Upcoming' ? styles.statusUpcoming :
-                    item.status === 'Past' ? styles.statusPast : styles.statusCancelled
-                ]}>
-                    <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
-                </View>
-            </View>
+    const renderOrderCard = ({ item }) => {
+        const parts = (item.event_date || '2026-01-01').split('-');
+        let month = 'JAN', day = '01', year = '2026';
+        if (parts.length >= 3) {
+            const d = new Date(item.event_date);
+            month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+            day = d.getDate().toString().padStart(2, '0');
+            year = d.getFullYear();
+        }
 
-            <View style={styles.eventInfoRow}>
-                <Image source={{ uri: item.image }} style={styles.eventThumb} />
-                <View style={styles.eventDetails}>
-                    <Text style={styles.eventTitle}>{item.title}</Text>
-                    <Text style={styles.eventVenue}>{item.venue}</Text>
-                </View>
-            </View>
+        const isUpcoming = item.status?.toString().toLowerCase() === 'upcoming' ||
+            item.status?.toString().toLowerCase() === 'active' ||
+            item.status === 1 || item.status === '1';
 
-            <View style={styles.breakdownContainer}>
-                {item.breakdown.map((b, i) => (
-                    <View key={i} style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>{b.tier} (x{b.qty})</Text>
-                        <Text style={styles.breakdownVal}>₱{(b.price * b.qty).toLocaleString()}</Text>
+        const isPast = item.status?.toString().toLowerCase() === 'past' ||
+            item.status?.toString().toLowerCase() === 'completed' ||
+            item.status === 2 || item.status === '2';
+
+        return (
+            <View style={styles.orderCard}>
+                <View style={styles.cardHeader}>
+                    <View>
+                        <Text style={styles.txnId}>{item.id}</Text>
+                        <Text style={styles.orderDate}>{month} {day}, {year}</Text>
                     </View>
-                ))}
-                <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Total Amount</Text>
-                    <Text style={styles.totalVal}>₱{item.total.toLocaleString()}</Text>
+                    <View style={[styles.statusBadge,
+                    isUpcoming ? styles.statusUpcoming :
+                        isPast ? styles.statusPast : styles.statusCancelled
+                    ]}>
+                        <Text style={styles.statusText}>{(item.status_text || item.status || 'UNKNOWN').toUpperCase()}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.eventInfoRow}>
+                    <Image
+                        source={{ uri: getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400' }}
+                        style={styles.eventThumb}
+                    />
+                    <View style={styles.eventDetails}>
+                        <View style={styles.categoryTag}>
+                            <Text style={styles.categoryTagText}>{(item.category || item.type || 'EVENT').toUpperCase()}</Text>
+                        </View>
+                        <Text style={styles.eventTitle} numberOfLines={1}>{item.event_name}</Text>
+                        <Text style={styles.eventVenue} numberOfLines={1}>{item.event_venue} • {formatTime(item.event_time)}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.actionRow}>
+                    <TouchableOpacity style={styles.receiptBtn}>
+                        <Text style={styles.receiptBtnText}>E-Receipt</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.detailsBtn}
+                        onPress={() => navigation.navigate('AttendeeEventDetails', { event: item })}
+                    >
+                        <Text style={styles.detailsBtnText}>VIEW DETAILS</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-
-            <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.receiptBtn}>
-                    <Text style={styles.receiptBtnText}>E-Receipt</Text>
-                </TouchableOpacity>
-                {item.status === 'Upcoming' && (
-                    <TouchableOpacity
-                        style={styles.viewPassBtn}
-                        onPress={() => {
-                            setSelectedOrder(item);
-                            setQrVisible(true);
-                        }}
-                    >
-                        <Text style={styles.viewPassText}>ENTRY PASS</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-        </View>
-    );
-
-    const borderColorTransform = borderAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['rgba(0, 194, 255, 0.2)', 'rgba(0, 194, 255, 1)']
-    });
-
-    const borderScaleTransform = borderAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 1.05]
-    });
+        );
+    };
 
     return (
         <View style={styles.root}>
@@ -182,76 +238,44 @@ export default function HistoryScreen({ navigation }) {
 
                 <View style={styles.pageTitles}>
                     <Text style={styles.mainTitle}>Purchase History</Text>
-                    <Text style={styles.subTitle}>Manage your tickets and access entry passes.</Text>
+                    <Text style={styles.subTitle}>Manage your tickets and booking details.</Text>
                 </View>
 
                 {renderTabs()}
 
-                <FlatList
-                    data={filteredData}
-                    renderItem={renderOrderCard}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No {activeTab.toLowerCase()} orders found.</Text>
-                        </View>
-                    }
-                />
-            </SafeAreaView>
-
-            {/* Advanced QR Pass Modal */}
-            <Modal visible={qrVisible} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-
-                    <View style={styles.qrContainer}>
-                        <TouchableOpacity style={styles.closeModal} onPress={() => setQrVisible(false)}>
-                            <Text style={styles.closeModalText}>CLOSE</Text>
-                        </TouchableOpacity>
-
-                        <Text style={styles.qrTitle}>ENTRY PASS</Text>
-                        <Text style={styles.qrSub}>{selectedOrder?.title}</Text>
-
-                        <View style={styles.qrBoxWrapper}>
-                            <Animated.View style={[
-                                styles.qrLiveBorder,
-                                { borderColor: borderColorTransform, transform: [{ scale: borderScaleTransform }] }
-                            ]} />
-                            <View style={styles.qrWhiteBox}>
-                                {/* QR Code Placeholder */}
-                                <Image
-                                    secondary
-                                    source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + selectedOrder?.qrToken }}
-                                    style={styles.qrImage}
-                                />
-                                <View style={styles.qrRefreshRow}>
-                                    <View style={styles.refreshDot} />
-                                    <Text style={styles.refreshText}>ROTATING SECURE KEY</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.qrSecurityInfo}>
-                            <Text style={styles.securityText}>
-                                This QR code refreshes every 30 seconds to prevent fraud.
-                                Screenshots are not valid for entry.
-                            </Text>
-                            <View style={styles.brightnessTag}>
-                                <Text style={styles.brightnessText}>MAX BRIGHTNESS ACTIVE</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.qrOfflineTag}>
-                            <Text style={styles.offlineText}>OFFLINE ACCESS ENABLED</Text>
-                        </View>
+                {loading && !refreshing ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#00C2FF" />
+                        <Text style={styles.loadingText}>Syncing history...</Text>
                     </View>
-                </View>
-            </Modal>
+                ) : (
+                    <FlatList
+                        data={filteredData}
+                        renderItem={renderOrderCard}
+                        keyExtractor={item => item.id.toString()}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                tintColor="#00C2FF"
+                            />
+                        }
+                        ListEmptyComponent={
+                            <View style={styles.emptyContainer}>
+                                <Text style={styles.emptyText}>No {activeTab.toLowerCase()} purchase found.</Text>
+                                {error && <Text style={styles.errorText}>{error}</Text>}
+                            </View>
+                        }
+                    />
+                )}
+            </SafeAreaView>
         </View>
     );
 }
+
+
 
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#050A14' },
@@ -317,33 +341,16 @@ const styles = StyleSheet.create({
     actionRow: { flexDirection: 'row', marginTop: 20, gap: 12 },
     receiptBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#132035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2E4A62' },
     receiptBtnText: { color: '#00C2FF', fontSize: 12, fontWeight: '800' },
-    viewPassBtn: { flex: 1.5, height: 48, borderRadius: 14, backgroundColor: '#00C2FF', alignItems: 'center', justifyContent: 'center' },
-    viewPassText: { color: '#050A14', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
 
     emptyContainer: { paddingVertical: 100, alignItems: 'center' },
     emptyText: { color: '#3D6080', fontSize: 14 },
 
-    // Modal UI
-    modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    qrContainer: { width: width * 0.85, backgroundColor: '#0B1623', borderRadius: 40, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: '#132035' },
-    closeModal: { alignSelf: 'flex-end', marginBottom: 10 },
-    closeModalText: { color: '#4A5568', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
-    qrTitle: { color: '#FFF', fontSize: 24, fontWeight: '900', marginTop: 10 },
-    qrSub: { color: '#00C2FF', fontSize: 12, fontWeight: '700', marginTop: 5, textAlign: 'center' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: { color: '#00C2FF', fontSize: 14, marginTop: 15, fontWeight: '700' },
+    errorText: { color: '#FF5733', fontSize: 12, marginTop: 10, textAlign: 'center', paddingHorizontal: 40 },
 
-    qrBoxWrapper: { width: 220, height: 220, marginTop: 40, alignItems: 'center', justifyContent: 'center' },
-    qrLiveBorder: { position: 'absolute', width: '100%', height: '100%', borderRadius: 30, borderWidth: 4, borderStyle: 'solid' },
-    qrWhiteBox: { width: 190, height: 190, backgroundColor: '#FFF', borderRadius: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-    qrImage: { width: 150, height: 150 },
-    qrRefreshRow: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 24, backgroundColor: '#050A14', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-    refreshDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#00E5A0' },
-    refreshText: { color: '#4A5568', fontSize: 8, fontWeight: '800' },
-
-    qrSecurityInfo: { marginTop: 30, alignItems: 'center' },
-    securityText: { color: '#4A5568', fontSize: 11, textAlign: 'center', lineHeight: 18, paddingHorizontal: 10 },
-    brightnessTag: { backgroundColor: '#FFD700', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, marginTop: 15 },
-    brightnessText: { color: '#050A14', fontSize: 9, fontWeight: '900' },
-
-    qrOfflineTag: { marginTop: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#132035', width: '100%', alignItems: 'center' },
-    offlineText: { color: '#3D6080', fontSize: 9, fontWeight: '800', letterSpacing: 1 }
+    categoryTag: { alignSelf: 'flex-start', backgroundColor: 'rgba(0,194,255,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginBottom: 4 },
+    categoryTagText: { color: '#00C2FF', fontSize: 8, fontWeight: '800' },
+    detailsBtn: { flex: 1.5, height: 48, borderRadius: 14, backgroundColor: '#00C2FF', alignItems: 'center', justifyContent: 'center' },
+    detailsBtnText: { color: '#050A14', fontSize: 12, fontWeight: '900', letterSpacing: 1 }
 });

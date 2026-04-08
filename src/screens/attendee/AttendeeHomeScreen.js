@@ -2,6 +2,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, Scroll
 import React, { useState, useContext, useRef, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
+import { Foundation } from '@expo/vector-icons'
 import { AuthContext } from '../../context/AuthContext'
 import Header from '../../components/Header'
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
@@ -35,15 +36,7 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
-
-const REFINED_EXPLORE = [
-  { id: 1, title: 'Tech Summit 2026', venue: 'Innovation Hub', time: '9:00 AM', date: 'MAR 22' },
-  { id: 2, title: 'Electronic Paradise', venue: 'Downtown Arena', time: '8:00 PM', date: 'MAR 25' },
-]
-
-const RECENT_EVENTS = [
-  { id: 1, title: 'Jazz & Blues Weekend', venue: 'Riverfront Stage', time: '6:00 PM', date: 'MAR 12' },
-]
+const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 const BgDecor = () => (
   <>
@@ -59,7 +52,7 @@ export default function HomeScreen({ navigation }) {
   const [error, setError] = useState(null);
   const { userInfo } = useContext(AuthContext);
 
-  const [favorites, setFavorites] = useState([2])
+  const [setFavorites] = useState([2])
   const [activeIndex, setActiveIndex] = useState(1);
   const scrollRef = useRef(null)
 
@@ -69,11 +62,8 @@ export default function HomeScreen({ navigation }) {
       setError(null);
 
       if (!userInfo?.token) {
-        console.log('No auth token found, fetch aborted');
-        return;
+        throw new Error('Not authenticated');
       }
-
-      // console.log('Fetching events from:', `${API_BASE_URL}/user/events`);
 
       const response = await fetch(`${API_BASE_URL}/users/events`, {
         headers: {
@@ -82,24 +72,20 @@ export default function HomeScreen({ navigation }) {
         }
       });
 
-      console.log('API Status:', response.status);
-
       if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status}`);
       }
 
       const json = await response.json();
-      console.log('API Data received, events count:', (json.data || json.events || json).length);
 
-      // Handle various response structures
       const eventData = json.data || json.events || json;
       setEvents(Array.isArray(eventData) ? eventData : []);
     } catch (err) {
-      console.error("Fetch error:", err);
       setError(err.message || 'Failed to load events');
+      console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      if (isRefresh) setRefreshing(false);
     }
   };
 
@@ -116,7 +102,32 @@ export default function HomeScreen({ navigation }) {
     fetchEvents(true);
   };
 
-  const heroData = events.slice(0, 3);
+  const today = getTodayStr();
+  const nextWeekDate = new Date();
+  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+  const nextWeekStr = nextWeekDate.toISOString().split('T')[0];
+
+  const isActive = (e) => e.status === 1 || e.status === '1' || String(e.status).toUpperCase() === 'ACTIVE' || String(e.status).toUpperCase() === 'LIVE';
+  const isCompleted = (e) => e.status === 2 || e.status === '2' || String(e.status).toUpperCase() === 'COMPLETED';
+
+  const activeEvents = events.filter(e => isActive(e) && !isCompleted(e));
+  const upcomingEvents = events.filter(e => !isActive(e) && !isCompleted(e) && (e.event_date || '') >= today);
+  const pastEvents = events.filter(e => isCompleted(e) || (!isActive(e) && (e.event_date || '') < today));
+
+  const allFutureEvents = [...activeEvents, ...upcomingEvents];
+
+  // Hero: Prioritize Active, then Upcoming
+  const heroData = activeEvents.length > 0 ? activeEvents.slice(0, 3) : upcomingEvents.slice(0, 3);
+
+  // Don't Miss: Future items happening this week (within 7 days)
+  const missThisWeek = allFutureEvents.filter(e => (e.event_date || '') <= nextWeekStr).slice(0, 8);
+
+  // Explore: Show all active, incoming, ongoing
+  const exploreEvents = allFutureEvents;
+
+  // Recent: Past or Completed events
+  const recentEvents = pastEvents.slice(0, 10);
+
   const clonedHeroEvents = heroData.length > 0
     ? [heroData[heroData.length - 1], ...heroData, heroData[0]]
     : [];
@@ -133,17 +144,15 @@ export default function HomeScreen({ navigation }) {
         animated: true,
       });
 
-      // Update state after animation would typically finish
       setTimeout(() => {
         if (nextIndex >= clonedHeroEvents.length - 1) {
-          // If at the clone of the first item, jump back to the actual first item
           scrollRef.current?.scrollTo({ x: width, animated: false });
           setActiveIndex(1);
         } else {
           setActiveIndex(nextIndex);
         }
-      }, 100); // 100ms transition time
-    }, 5000); // 5 seconds interval
+      }, 100); // 100ms
+    }, 5000); // 5 secs
 
     return () => clearInterval(interval);
   }, [activeIndex, clonedHeroEvents.length]);
@@ -229,15 +238,26 @@ export default function HomeScreen({ navigation }) {
                     >
                       <View style={styles.heroTag}>
                         <Text style={styles.heroTagText}>
-                          {(event.category || event.event_category || 'EVENT').toUpperCase()}
+                          {(event.category).toUpperCase()}
                         </Text>
                       </View>
                       <Text style={styles.heroTitle}>{event.event_name}</Text>
-                      <Text style={styles.heroSubtitle}>{event.event_description}</Text>
+                      <View style={styles.heroMetaRow}>
+                        <View style={styles.heroMetaItem}>
+                          <Foundation name="marker" size={13} color="#FFF" />
+                          <Text style={styles.heroMetaText}>{event.event_venue || 'TBA'}</Text>
+                        </View>
+                        <View style={styles.heroMetaDot} />
+                        <View style={styles.heroMetaItem}>
+                          <Foundation name="calendar" size={13} color="#00C2FF" />
+                          <Text style={[styles.heroMetaText, { color: '#00C2FF' }]}>{event.event_date}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.heroSubtitle} numberOfLines={2}>{event.description}</Text>
 
                       <TouchableOpacity
                         style={styles.heroFab}
-                        onPress={() => navigation.navigate('CustomerPurchase', { event })}
+                        onPress={() => navigation.navigate('AttendeeEventDetails', { event })}
                       >
                         <Text style={styles.heroFabText}>Get Tickets Now</Text>
                       </TouchableOpacity>
@@ -271,25 +291,22 @@ export default function HomeScreen({ navigation }) {
           )}
 
           {/* Don't Miss This Week */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Don't Miss This Week</Text>
+          <View style={[styles.section, { paddingHorizontal: 0 }]}>
+            <Text style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>Don't Miss This Week</Text>
 
-            {/* Show next 3, or if very few, show all avoiding duplicates if needed */}
-            {events.length > 0 ? (
-              events.slice(3, 8).length > 0 ? (
-                events.slice(3, 8).map(item => (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20 }}
+            >
+              {missThisWeek.length > 0 ? (
+                missThisWeek.map(item => (
                   <View key={item.id} style={styles.verticalCard}>
                     <View style={styles.vCardTop}>
                       <Image
                         source={{ uri: item.event_image_url || getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
                         style={styles.vCardImg}
                       />
-                      <TouchableOpacity
-                        style={styles.heartBtn}
-                        onPress={() => toggleFavorite(item.id)}
-                      >
-                        <Text style={styles.heartIcon}>{favorites.includes(item.id) ? '❤️' : '🤍'}</Text>
-                      </TouchableOpacity>
                       <View style={styles.vGenreTag}>
                         <Text style={styles.vGenreText}>
                           {(item.category || item.event_category || 'EVENT').toUpperCase()}
@@ -302,21 +319,22 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.vCardLoc}>{item.event_venue}</Text>
                         <Text style={styles.vCardDate}>{item.event_date} • {formatTime(item.event_time)}</Text>
                       </View>
+
                       <TouchableOpacity
                         style={styles.vCardBuyBtn}
-                        onPress={() => navigation.navigate('CustomerPurchase', { event: item })}
+                        onPress={() => navigation.navigate('AttendeeEventDetails', { event: item })}
                       >
                         <Text style={styles.vCardBuyText}>Get Tickets</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 ))
-              ) : (
-                <Text style={styles.emptySectionText}>More events coming soon...</Text>
-              )
-            ) : !loading && (
-              <Text style={styles.emptySectionText}>No upcoming events found</Text>
-            )}
+              ) : !loading && (
+                <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'center' }}>
+                  <Text style={styles.emptySectionText}>More events coming soon...</Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
 
           {/* Explore Events */}
@@ -325,37 +343,66 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.sectionTitle}>Explore Events</Text>
               <TouchableOpacity><Text style={styles.seeMoreBtn}>View More</Text></TouchableOpacity>
             </View>
-            {REFINED_EXPLORE.map(item => (
-              <TouchableOpacity key={item.id} style={styles.listCard}>
-                <View style={styles.listDateBox}>
-                  <Text style={styles.listDateNum}>{item.date.split(' ')[1]}</Text>
-                  <Text style={styles.listDateMonth}>{item.date.split(' ')[0]}</Text>
-                </View>
-                <View style={styles.listInfo}>
-                  <Text style={styles.listTitle}>{item.title}</Text>
-                  <Text style={styles.listDetails}>{item.venue} • {item.time}</Text>
-                </View>
-                <Text style={styles.listChevron}>›</Text>
-              </TouchableOpacity>
-            ))}
+            {exploreEvents.length > 0 ? (
+              exploreEvents.map(item => {
+                const parts = (item.event_date || 'JAN 01').split('-');
+                let month = 'JAN', day = '01';
+                if (parts.length >= 3) {
+                  // Fallback for YYYY-MM-DD
+                  const d = new Date(item.event_date);
+                  month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                  day = d.getDate().toString().padStart(2, '0');
+                }
+
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.listCard}
+                    onPress={() => navigation.navigate('AttendeeEventDetails', { event: item })}
+                  >
+                    <View style={styles.listDateBox}>
+                      <Text style={styles.listDateNum}>{day}</Text>
+                      <Text style={styles.listDateMonth}>{month}</Text>
+                    </View>
+                    <View style={styles.listInfo}>
+                      <Text style={styles.listTitle}>{item.event_name}</Text>
+                      <Text style={styles.listDetails}>{item.event_venue} • {formatTime(item.event_time)}</Text>
+                    </View>
+                    <Text style={styles.listChevron}>›</Text>
+                  </TouchableOpacity>
+                );
+              })
+            ) : !loading && (
+              <Text style={styles.emptySectionText}>Discover more events later</Text>
+            )}
           </View>
 
           {/* Recent Events */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Events</Text>
-            {RECENT_EVENTS.map(item => (
-              <TouchableOpacity key={item.id} style={[styles.listCard, styles.listCardPast]}>
-                <View style={[styles.listDateBox, styles.listDateBoxPast]}>
-                  <Text style={[styles.listDateNum, styles.listTextPast]}>{item.date.split(' ')[1]}</Text>
-                  <Text style={[styles.listDateMonth, styles.listTextPast]}>{item.date.split(' ')[0]}</Text>
-                </View>
-                <View style={styles.listInfo}>
-                  <Text style={[styles.listTitle, styles.listTextPast]}>{item.title}</Text>
-                  <Text style={styles.listDetails}>{item.venue} • {item.time}</Text>
-                </View>
-                <Text style={styles.listChevron}>›</Text>
-              </TouchableOpacity>
-            ))}
+            {recentEvents.length > 0 ? (
+              recentEvents.map(item => {
+                const d = new Date(item.event_date);
+                const month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                const day = d.getDate().toString().padStart(2, '0');
+
+                return (
+                  <TouchableOpacity key={item.id} style={[styles.listCard, styles.listCardPast]}>
+                    <View style={[styles.listDateBox, styles.listDateBoxPast]}>
+                      <Text style={[styles.listDateNum, styles.listTextPast]}>{day}</Text>
+                      <Text style={[styles.listDateMonth, styles.listTextPast]}>{month}</Text>
+                    </View>
+                    <View style={styles.listInfo}>
+                      <Text style={[styles.listTitle, styles.listTextPast]}>{item.event_name}</Text>
+                      <Text style={styles.listDetails}>{item.event_venue} • {formatTime(item.event_time)}</Text>
+                    </View>
+                    <Text style={styles.listChevron}>›</Text>
+                  </TouchableOpacity>
+                );
+              })
+            ) : !loading && (
+              <Text style={styles.emptySectionText}>No past events to show</Text>
+            )}
           </View>
 
           <View style={{ height: 40 }} />
@@ -369,16 +416,16 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#050A14' },
 
   bgOrb1: {
-    position: 'absolute', width: 400, height: 400, borderRadius: 200,
+    position: 'absolute', width: 320, height: 320, borderRadius: 160,
     backgroundColor: '#00C2FF', top: -100, right: -100, opacity: 0.04,
   },
   bgOrb2: {
-    position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: '#FF5733', bottom: -50, left: -100, opacity: 0.03,
+    position: 'absolute', width: 240, height: 240, borderRadius: 120,
+    backgroundColor: '#00E5A0', bottom: 80, left: -80, opacity: 0.04,
   },
 
   safeArea: { flex: 1 },
-  scrollContent: { paddingTop: 10, paddingBottom: 40 },
+  scrollContent: { paddingTop: 10 },
 
   centerContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20,
@@ -393,12 +440,16 @@ const styles = StyleSheet.create({
   heroBg: { flex: 1 },
   heroOverlay: { flex: 1, padding: 24, justifyContent: 'flex-end' },
   heroTag: {
-    alignSelf: 'flex-start', backgroundColor: '#00C2FF',
+    alignSelf: 'flex-start', backgroundColor: '#FFD700',
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 12
   },
-  heroTagText: { color: '#000', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  heroTitle: { color: '#FFF', fontSize: 38, fontWeight: '900', letterSpacing: -1, marginBottom: 8, lineHeight: 40, width: '75%' },
-  heroSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: '500', marginBottom: 24, width: '70%', lineHeight: 22 },
+  heroTagText: { color: '#050A14', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  heroTitle: { color: '#FFF', fontSize: 38, fontWeight: '900', letterSpacing: -1, marginBottom: 12, lineHeight: 40, width: '90%' },
+  heroMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
+  heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  heroMetaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#4A8AAF' },
+  heroMetaText: { color: '#C0D0E0', fontSize: 13, fontWeight: '600' },
+  heroSubtitle: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '500', marginBottom: 24, width: '85%', lineHeight: 20 },
   heroFab: {
     alignSelf: 'flex-start',
     backgroundColor: '#FFF', paddingHorizontal: 22, paddingVertical: 14, borderRadius: 16,
@@ -413,16 +464,16 @@ const styles = StyleSheet.create({
   // Sections
   section: { marginBottom: 32, paddingHorizontal: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800' },
+  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', marginBottom: 20 },
   seeMoreBtn: { color: '#00C2FF', fontSize: 13, fontWeight: '700' },
   emptySectionText: {
-    color: '#3D6080', fontSize: 14, fontStyle: 'italic', marginTop: -10, marginBottom: 20
+    color: '#3D6080', fontSize: 14, fontStyle: 'italic', marginTop: 4, marginBottom: 24
   },
 
-  // Vertical Cards (Don't Miss)
+  // Horizontal Cards (Don't Miss)
   verticalCard: {
-    height: 340, backgroundColor: '#0B1623', borderRadius: 24,
-    marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#132035'
+    height: 280, width: 280, backgroundColor: '#0B1623', borderRadius: 24,
+    marginRight: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#132035'
   },
   vCardTop: { height: '70%', position: 'relative' },
   vCardImg: { ...StyleSheet.absoluteFillObject },

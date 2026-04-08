@@ -10,7 +10,6 @@ import EventScreen from "../screens/organizer/EventScreen";
 import ManageEventScreen from "../screens/merchant/ManageEventScreen";
 import AttendeeTrackScreen from '../screens/organizer/AttendeeTrackScreen';
 import HistoryScreen from '../screens/attendee/HistoryScreen';
-import PurchaseScreen from '../screens/attendee/PurchaseScreen';
 import { AuthContext } from '../context/AuthContext';
 
 const Drawer = createDrawerNavigator();
@@ -107,11 +106,6 @@ export default function DrawerNavigation({ route }) {
                         name="CustomerHome"
                         component={HomeScreen}
                         options={{ title: "Dashboard" }}
-                    />
-                    <Drawer.Screen
-                        name="CustomerPurchase"
-                        component={PurchaseScreen}
-                        options={{ title: "Purchase Tickets" }}
                     />
                     <Drawer.Screen
                         name="CustomerHistory"

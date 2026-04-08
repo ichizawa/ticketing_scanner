@@ -210,32 +210,51 @@ export default function ManageEventScreen({ navigation }) {
           resizeMode="cover"
         >
           <LinearGradient
-            colors={['rgba(5,10,20,0.4)', 'rgba(5,10,20,0.8)']}
+            colors={['rgba(5,10,20,0.2)', 'rgba(5,10,20,0.85)']}
             style={styles.cardGradient}
           >
             <View style={styles.cardTopRow}>
-              <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '22' }]}>
-                <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-                <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                  {statusConfig.label}
-                </Text>
-              </View>
-
+              {(item.category || item.event_category) && (
+                <View style={styles.categoryPill}>
+                  <Text style={styles.categoryPillText}>
+                    {(item.category || item.event_category).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              
               <View style={[
                 styles.accentTag,
-                { backgroundColor: accentColor + '22', borderColor: accentColor + '44' }
+                { backgroundColor: 'rgba(5,10,20,0.6)', borderColor: accentColor + '40' }
               ]}>
                 <Text style={[styles.accentTagText, { color: accentColor }]}>
                   {pct}% SOLD
                 </Text>
               </View>
             </View>
+
+            <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '15', borderColor: statusConfig.color + '30', borderWidth: 1 }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+              <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                {statusConfig.label}
+              </Text>
+            </View>
           </LinearGradient>
         </ImageBackground>
 
         <Text style={styles.cardTitle}>{item.event_name}</Text>
-        <Text style={styles.cardVenue}>{item.event_venue}</Text>
-        <Text style={[styles.cardSchedule, { color: accentColor }]}>{item.event_date} • {formatTime(item.event_time)}</Text>
+        <View style={styles.cardMetaRow}>
+          <View style={styles.cardMetaItem}>
+            <Foundation name="marker" size={11} color="#C0D0E0" />
+            <Text style={styles.cardMetaText}>{item.event_venue || 'TBA'}</Text>
+          </View>
+          <View style={styles.cardMetaDot} />
+          <View style={styles.cardMetaItem}>
+            <Foundation name="calendar" size={11} color={accentColor} />
+            <Text style={[styles.cardMetaText, { color: accentColor }]}>
+              {item.event_date} • {formatTime(item.event_time)}
+            </Text>
+          </View>
+        </View>
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
           <Text style={[styles.cardFooterText, { color: accentColor }]}>
             VIEW DETAILS ›
@@ -370,36 +389,45 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 16, elevation: 10,
   },
   cardBanner: {
-    height: 125, width: '100%', justifyContent: 'flex-end',
+    height: 150, width: '100%', justifyContent: 'flex-end',
   },
   cardGradient: {
-    padding: 16, width: '100%',
+    padding: 16, width: '100%', flex: 1, justifyContent: 'space-between'
   },
   cardTopRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
   },
   statusPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4
+    flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start'
   },
   statusDot: {
     width: 6, height: 6, borderRadius: 3
   },
   statusText: {
-    fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase'
+    fontSize: 9, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase'
+  },
+  categoryPill: { 
+    backgroundColor: '#FFD700', 
+    paddingHorizontal: 8, 
+    paddingVertical: 3, 
+    borderRadius: 6,
+    borderWidth: 0
+  },
+  categoryPillText: { 
+    color: '#050A14', 
+    fontSize: 9, 
+    fontWeight: '900', 
+    letterSpacing: 0.5 
   },
   cardTitle: {
     color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16,
-    marginBottom: 4, letterSpacing: -0.3
+    marginBottom: 6, letterSpacing: -0.3
   },
-  cardVenue: {
-    color: '#4A8AAF', fontSize: 12, fontWeight: '500', paddingHorizontal: 16,
-    marginBottom: 3
-  },
-  cardSchedule: {
-    fontSize: 12, fontWeight: '700', paddingHorizontal: 16, marginBottom: 14,
-    letterSpacing: 0.3
-  },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16, gap: 8, flexWrap: 'wrap' },
+  cardMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  cardMetaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.1)' },
+  cardMetaText: { color: '#C0D0E0', fontSize: 12, fontWeight: '600' },
   cardFooter: {
     borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 4
   },
