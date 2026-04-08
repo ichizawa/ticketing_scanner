@@ -217,55 +217,73 @@ export default function HomeScreen({ navigation }) {
 
           {/* Hero Carousel */}
           {clonedHeroEvents.length > 0 ? (
-            <ScrollView
-              ref={scrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={handleScroll}
-              contentOffset={{ x: width, y: 0 }}
-              style={styles.heroCarousel}
-            >
-              {clonedHeroEvents.map((event, idx) => (
-                <View key={`${event.id}-${idx}`} style={styles.heroCard}>
-                  <ImageBackground
-                    source={{ uri: event.event_image_url || getImageUrl(event.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
-                    style={styles.heroBg}
-                  >
-                    <LinearGradient
-                      colors={['transparent', 'rgba(5,10,20,0.9)']}
-                      style={styles.heroOverlay}
+            <View style={styles.heroContainer}>
+              <ScrollView
+                ref={scrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={handleScroll}
+                contentOffset={{ x: width, y: 0 }}
+                style={styles.heroCarousel}
+              >
+                {clonedHeroEvents.map((event, idx) => (
+                  <View key={`${event.id}-${idx}`} style={styles.heroCard}>
+                    <ImageBackground
+                      source={{ uri: event.event_image_url || getImageUrl(event.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+                      style={styles.heroBg}
                     >
-                      <View style={styles.heroTag}>
-                        <Text style={styles.heroTagText}>
-                          {(event.category).toUpperCase()}
-                        </Text>
-                      </View>
-                      <Text style={styles.heroTitle}>{event.event_name}</Text>
-                      <View style={styles.heroMetaRow}>
-                        <View style={styles.heroMetaItem}>
-                          <Foundation name="marker" size={13} color="#FFF" />
-                          <Text style={styles.heroMetaText}>{event.event_venue || 'TBA'}</Text>
-                        </View>
-                        <View style={styles.heroMetaDot} />
-                        <View style={styles.heroMetaItem}>
-                          <Foundation name="calendar" size={13} color="#00C2FF" />
-                          <Text style={[styles.heroMetaText, { color: '#00C2FF' }]}>{event.event_date}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.heroSubtitle} numberOfLines={2}>{event.description}</Text>
-
-                      <TouchableOpacity
-                        style={styles.heroFab}
-                        onPress={() => navigation.navigate('AttendeeEventDetails', { event })}
+                      <LinearGradient
+                        colors={['transparent', 'rgba(5,10,20,0.9)']}
+                        style={styles.heroOverlay}
                       >
-                        <Text style={styles.heroFabText}>Get Tickets Now</Text>
-                      </TouchableOpacity>
-                    </LinearGradient>
-                  </ImageBackground>
-                </View>
-              ))}
-            </ScrollView>
+                        <View style={styles.heroTag}>
+                          <Text style={styles.heroTagText}>
+                            {(event.category).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.heroTitle}>{event.event_name}</Text>
+                        <View style={styles.heroMetaRow}>
+                          <View style={styles.heroMetaItem}>
+                            <Foundation name="marker" size={13} color="#00C2FF" />
+                            <Text style={[styles.heroMetaText, { color: '#FFF' }]}>{event.event_venue || 'TBA'}</Text>
+                          </View>
+                          <View style={styles.heroMetaDot} />
+                          <View style={styles.heroMetaItem}>
+                            <Foundation name="calendar" size={13} color="#00C2FF" />
+                            <Text style={[styles.heroMetaText, { color: '#FFF' }]}>{event.event_date}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.heroSubtitle} numberOfLines={2}>{event.description}</Text>
+
+                        <TouchableOpacity
+                          style={styles.heroFab}
+                          onPress={() => navigation.navigate('AttendeeEventDetails', { event })}
+                        >
+                          <Text style={styles.heroFabText}>View Tickets Now</Text>
+                        </TouchableOpacity>
+                      </LinearGradient>
+                    </ImageBackground>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Pagination Dots */}
+              <View style={styles.paginationDots}>
+                {heroData.map((_, i) => {
+                  const isDotActive = (activeIndex - 1 + heroData.length) % heroData.length === i;
+                  return (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        isDotActive && styles.dotActive
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
           ) : !error && (
             <View style={styles.heroCard}>
               <LinearGradient
@@ -324,7 +342,7 @@ export default function HomeScreen({ navigation }) {
                         style={styles.vCardBuyBtn}
                         onPress={() => navigation.navigate('AttendeeEventDetails', { event: item })}
                       >
-                        <Text style={styles.vCardBuyText}>Get Tickets</Text>
+                        <Text style={styles.vCardBuyText}>View Events</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -435,9 +453,27 @@ const styles = StyleSheet.create({
   },
 
   // Hero Carousel
+  heroContainer: { position: 'relative' },
   heroCarousel: { marginBottom: 32 },
   heroCard: { width: width, height: 500 },
   heroBg: { flex: 1 },
+  paginationDots: {
+    position: 'absolute',
+    bottom: 50,
+    right: 24,
+    flexDirection: 'row',
+    gap: 6
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  dotActive: {
+    width: 20,
+    backgroundColor: '#FFD700', // Matching category tag color
+  },
   heroOverlay: { flex: 1, padding: 24, justifyContent: 'flex-end' },
   heroTag: {
     alignSelf: 'flex-start', backgroundColor: '#FFD700',

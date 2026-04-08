@@ -93,8 +93,6 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
         }
     };
 
-
-
     const handleBack = () => {
         navigation.goBack();
     };
@@ -105,8 +103,6 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
             { text: 'Logout', style: 'destructive', onPress: () => logout() }
         ]);
     };
-
-
 
     const renderHeader = () => (
         <Header navigation={navigation} onBack={() => navigation.goBack()} />
@@ -155,24 +151,22 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                                 <Text style={styles.eventTitle}>{displayEvent.title}</Text>
                                 <View style={styles.heroMetaRow}>
                                     <View style={styles.heroMetaItem}>
-                                        <Foundation name="marker" size={13} color="#FFF" />
+                                        <Foundation name="marker" size={13} color="#00C2FF" />
                                         <Text style={styles.heroMetaText}>{displayEvent.venue || 'TBA'}</Text>
                                     </View>
-                                    <View style={styles.heroMetaDot} />
                                     <View style={styles.heroMetaItem}>
                                         <Foundation name="calendar" size={13} color="#00C2FF" />
-                                        <Text style={[styles.heroMetaText, { color: '#00C2FF' }]}>{displayEvent.date}</Text>
+                                        <Text style={styles.heroMetaText}>{displayEvent.date}</Text>
                                     </View>
-                                    <View style={styles.heroMetaDot} />
                                     <View style={styles.heroMetaItem}>
                                         <Foundation name="clock" size={13} color="#00C2FF" />
-                                        <Text style={[styles.heroMetaText, { color: '#00C2FF' }]}>{formatTime(displayEvent.time)}</Text>
+                                        <Text style={styles.heroMetaText}>{formatTime(displayEvent.time)}</Text>
                                     </View>
                                 </View>
                             </View>
                         </View>
 
-                         {/* About Section */}
+                        {/* About Section */}
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>ABOUT EVENT</Text>
                         </View>
@@ -182,15 +176,17 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                         >
                             {displayEvent.description || 'Join the ultimate experience at this event. Featuring world-class production and emotional journeys through sound.'}
                         </Text>
-                        <TouchableOpacity
-                            onPress={() => setIsAboutExpanded(!isAboutExpanded)}
-                            style={styles.readMoreBtn}
-                        >
-                            <Text style={styles.readMoreText}>
-                                {isAboutExpanded ? 'View Less' : 'View More'}
-                            </Text>
-                            <View style={[styles.arrowIcon, isAboutExpanded && styles.arrowRotated]} />
-                        </TouchableOpacity>
+                        {(displayEvent.description && displayEvent.description.length > 150) && (
+                            <TouchableOpacity
+                                onPress={() => setIsAboutExpanded(!isAboutExpanded)}
+                                style={styles.readMoreBtn}
+                            >
+                                <Text style={styles.readMoreText}>
+                                    {isAboutExpanded ? 'View Less' : 'View More'}
+                                </Text>
+                                <View style={[styles.arrowIcon, isAboutExpanded && styles.arrowRotated]} />
+                            </TouchableOpacity>
+                        )}
 
                         {/* Line-up Gallery */}
                         <View style={styles.sectionHeader}>
@@ -313,7 +309,7 @@ const styles = StyleSheet.create({
     heroMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
     heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
     heroMetaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#4A8AAF' },
-    heroMetaText: { color: '#C0D0E0', fontSize: 12, fontWeight: '600' },
+    heroMetaText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
     sectionHeader: { paddingHorizontal: 20, marginTop: 40, marginBottom: 16 },
     sectionTitle: { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 2 },

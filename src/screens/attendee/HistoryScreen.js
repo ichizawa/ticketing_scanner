@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Dimensions, StatusBar, Image, Platform, FlatList, Modal, ActivityIndicator, RefreshControl, Alert } from 'react-native'
+import { Foundation } from '@expo/vector-icons'
 import React, { useState, useRef, useEffect, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
@@ -84,14 +85,15 @@ export default function HistoryScreen({ navigation }) {
                     const eventDetails = eventsList.find(e => e.id === eventId);
                     return {
                     ...ticket,
-                    event_name: eventDetails?.event_name || 'Unknown Event',
-                    event_date: eventDetails?.event_date || null,
-                    event_time: eventDetails?.event_time || null,
-                    event_venue: eventDetails?.event_venue || 'TBA',
-                    event_image: eventDetails?.event_image_url || eventDetails?.event_image || null,
-                    category: eventDetails?.category || 'EVENT',
-                    status: ticket.sale?.status || ticket.status || 1,
+                    event_name: eventDetails?.event_name,
+                    event_date: eventDetails?.event_date,
+                    event_time: eventDetails?.event_time,
+                    event_venue: eventDetails?.event_venue,
+                    event_image: eventDetails?.event_image_url || eventDetails?.event_image,
+                    category: eventDetails?.category,
+                    status: ticket.sale?.status || ticket.status,
                     status_text: ticket.sale?.status || null,
+                    event_id: eventId,
                 };
             });
         }
@@ -134,13 +136,13 @@ export default function HistoryScreen({ navigation }) {
 
         // Map API statuses to tabs
         if (tab === 'upcoming') {
-            return itemStatus === 'upcoming' || itemStatus === 'active' || itemStatus === '1';
+            return itemStatus === '1' || itemStatus === 'active';
         }
         if (tab === 'past') {
-            return itemStatus === 'past' || itemStatus === 'completed' || itemStatus === '2';
+            return itemStatus === '0' || itemStatus === 'past' || itemStatus === 'completed';
         }
         if (tab === 'cancelled') {
-            return itemStatus === 'cancelled' || itemStatus === '3';
+            return itemStatus === '3' || itemStatus === 'cancelled';
         }
 
         return itemStatus === tab;
@@ -175,30 +177,24 @@ export default function HistoryScreen({ navigation }) {
             year = d.getFullYear();
         }
 
-        const isUpcoming = item.status?.toString().toLowerCase() === 'upcoming' ||
-            item.status?.toString().toLowerCase() === 'active' ||
-            item.status === 1 || item.status === '1';
-
-        const isPast = item.status?.toString().toLowerCase() === 'past' ||
-            item.status?.toString().toLowerCase() === 'completed' ||
-            item.status === 2 || item.status === '2';
+        const isUpcoming = item.status === 1 || item.status === '1' || item.status?.toString().toLowerCase() === 'active';
+        const isPast = item.status === 0 || item.status === '0' || item.status?.toString().toLowerCase() === 'past';
 
         return (
             <View style={styles.orderCard}>
                 <View style={styles.cardHeader}>
                     <View>
-                        <Text style={styles.txnId}>{item.id}</Text>
-                        <Text style={styles.orderDate}>{month} {day}, {year}</Text>
+                        <Text style={styles.txnId}>ID: {item.id}</Text>
                     </View>
                     <View style={[styles.statusBadge,
                     isUpcoming ? styles.statusUpcoming :
                         isPast ? styles.statusPast : styles.statusCancelled
                     ]}>
-                        <Text style={styles.statusText}>{(item.status_text || item.status || 'UNKNOWN').toUpperCase()}</Text>
+                        <Text style={styles.statusText}>{isUpcoming ? 'ACTIVE' : isPast ? 'NOT ACTIVE' : (item.status_text || 'UNKNOWN').toUpperCase()}</Text>
                     </View>
                 </View>
 
-                <View style={styles.eventInfoRow}>
+                <View style={styles.cardContent}>
                     <Image
                         source={{ uri: getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400' }}
                         style={styles.eventThumb}
@@ -208,17 +204,28 @@ export default function HistoryScreen({ navigation }) {
                             <Text style={styles.categoryTagText}>{(item.category || item.type || 'EVENT').toUpperCase()}</Text>
                         </View>
                         <Text style={styles.eventTitle} numberOfLines={1}>{item.event_name}</Text>
-                        <Text style={styles.eventVenue} numberOfLines={1}>{item.event_venue} • {formatTime(item.event_time)}</Text>
+                        
+                        <View style={styles.metaRow}>
+                            <View style={styles.metaItem}>
+                                <Foundation name="marker" size={11} color="#00C2FF" />
+                                <Text style={styles.metaText} numberOfLines={1}>{item.event_venue}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Foundation name="calendar" size={11} color="#00C2FF" />
+                                <Text style={styles.metaText}>{item.event_date || 'YYYY-MM-DD'}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Foundation name="clock" size={11} color="#00C2FF" />
+                                <Text style={styles.metaText}>{formatTime(item.event_time)}</Text>
+                            </View>
+                        </View>
                     </View>
                 </View>
 
                 <View style={styles.actionRow}>
-                    <TouchableOpacity style={styles.receiptBtn}>
-                        <Text style={styles.receiptBtnText}>E-Receipt</Text>
-                    </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.detailsBtn}
-                        onPress={() => navigation.navigate('AttendeeEventDetails', { event: item })}
+                        onPress={() => navigation.navigate('AttendeeEventDetails', { event: { ...item, id: item.event_id } })}
                     >
                         <Text style={styles.detailsBtnText}>VIEW DETAILS</Text>
                     </TouchableOpacity>
@@ -316,18 +323,22 @@ const styles = StyleSheet.create({
     orderCard: { backgroundColor: '#0B1623', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#132035' },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
     txnId: { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-    orderDate: { color: '#FFF', fontSize: 14, fontWeight: '700', marginTop: 2 },
+    orderDate: { color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 2, opacity: 0.9 },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     statusUpcoming: { backgroundColor: '#00C2FF20', borderWidth: 1, borderColor: '#00C2FF' },
     statusPast: { backgroundColor: '#4A556820', borderWidth: 1, borderColor: '#4A5568' },
     statusCancelled: { backgroundColor: '#FF573320', borderWidth: 1, borderColor: '#FF5733' },
     statusText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
 
-    eventInfoRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#132035', padding: 12, borderRadius: 16 },
+    cardContent: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 16 },
     eventThumb: { width: 50, height: 50, borderRadius: 12 },
     eventDetails: { flex: 1, marginLeft: 15 },
     eventTitle: { color: '#FFF', fontSize: 15, fontWeight: '800' },
     eventVenue: { color: '#4A8AAF', fontSize: 11, marginTop: 2 },
+
+    metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    metaText: { color: '#C0D0E0', fontSize: 11, fontWeight: '700' },
 
     breakdownContainer: { marginTop: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#132035' },
     breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
@@ -339,9 +350,6 @@ const styles = StyleSheet.create({
     totalVal: { color: '#00C2FF', fontSize: 18, fontWeight: '900' },
 
     actionRow: { flexDirection: 'row', marginTop: 20, gap: 12 },
-    receiptBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#132035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2E4A62' },
-    receiptBtnText: { color: '#00C2FF', fontSize: 12, fontWeight: '800' },
-
     emptyContainer: { paddingVertical: 100, alignItems: 'center' },
     emptyText: { color: '#3D6080', fontSize: 14 },
 
@@ -349,8 +357,8 @@ const styles = StyleSheet.create({
     loadingText: { color: '#00C2FF', fontSize: 14, marginTop: 15, fontWeight: '700' },
     errorText: { color: '#FF5733', fontSize: 12, marginTop: 10, textAlign: 'center', paddingHorizontal: 40 },
 
-    categoryTag: { alignSelf: 'flex-start', backgroundColor: 'rgba(0,194,255,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginBottom: 4 },
-    categoryTagText: { color: '#00C2FF', fontSize: 8, fontWeight: '800' },
-    detailsBtn: { flex: 1.5, height: 48, borderRadius: 14, backgroundColor: '#00C2FF', alignItems: 'center', justifyContent: 'center' },
-    detailsBtnText: { color: '#050A14', fontSize: 12, fontWeight: '900', letterSpacing: 1 }
+    categoryTag: { alignSelf: 'flex-start', backgroundColor: '#FFD700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+    categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+    detailsBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#132035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2E4A62' },
+    detailsBtnText: { color: '#00C2FF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }
 });
