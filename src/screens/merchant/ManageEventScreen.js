@@ -38,7 +38,6 @@ const getImageUrl = (path) => {
 };
 
 
-// Helper function to return the correct label and base color
 const getStatusConfig = (statusCode) => {
   switch (statusCode) {
     case 0: return { label: 'UPCOMING', color: '#FFAA00' };

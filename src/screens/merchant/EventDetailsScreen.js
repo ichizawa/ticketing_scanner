@@ -78,11 +78,6 @@ export default function EventDetailsScreen({ route, navigation }) {
     }
   };
 
-  const handleLogout = () =>
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => logout() },
-    ]);
 
   // Mock lineup
   const LINEUP = ['Headliner Name', 'Supporting Artist', 'Guest Performer', 'Special Guest', 'DJ Set'];
