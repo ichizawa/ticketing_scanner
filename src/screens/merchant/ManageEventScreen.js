@@ -60,7 +60,6 @@ export default function ManageEventScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedEvent, setSelectedEvent] = useState(null);
   const { userInfo, logout } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState('All Events');
@@ -185,11 +184,10 @@ export default function ManageEventScreen({ navigation }) {
     </View>
   );
 
-  const renderEvent = ({ item }) => {
+  const EventCard = ({ item, navigation }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const statusStr = String(item.status || '').toUpperCase();
     const isLive = item.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE' || statusStr === 'ON LIVE';
-
-    // Default accent or logic to use item's status color
     const accentColor = isLive ? '#00E5A0' : '#00C2FF';
     const statusConfig = getStatusConfig(item.status);
 
@@ -204,7 +202,7 @@ export default function ManageEventScreen({ navigation }) {
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
         <ImageBackground
-          source={{ uri: item.event_image_url || getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+          source={{ uri: item.event_image_url || getImageUrl(item.event_image) }}
           style={styles.cardBanner}
           resizeMode="cover"
         >
@@ -213,10 +211,10 @@ export default function ManageEventScreen({ navigation }) {
             style={styles.cardGradient}
           >
             <View style={styles.cardTopRow}>
-              {(item.category || item.event_category) && (
+              {(item.category) && (
                 <View style={styles.categoryPill}>
                   <Text style={styles.categoryPillText}>
-                    {(item.category || item.event_category).toUpperCase()}
+                    {(item.category).toUpperCase()}
                   </Text>
                 </View>
               )}
@@ -240,28 +238,57 @@ export default function ManageEventScreen({ navigation }) {
           </LinearGradient>
         </ImageBackground>
 
-        <Text style={styles.cardTitle}>{item.event_name}</Text>
-        <View style={styles.cardMetaRow}>
-          <View style={styles.cardMetaItem}>
-            <Foundation name="marker" size={11} color="#C0D0E0" />
-            <Text style={styles.cardMetaText}>{item.event_venue || 'TBA'}</Text>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>{item.event_name}</Text>
+          <View style={styles.cardMetaRow}>
+            <View style={styles.cardMetaItem}>
+              <Foundation name="marker" size={11} color="#00C2FF" />
+              <Text style={styles.cardMetaText} numberOfLines={1}>{item.event_venue || 'TBA'}</Text>
+            </View>
+            <View style={styles.cardMetaItem}>
+              <Foundation name="calendar" size={11} color="#00C2FF" />
+              <Text style={styles.cardMetaText}>{item.event_date}</Text>
+            </View>
+            <View style={styles.cardMetaItem}>
+              <Foundation name="clock" size={11} color="#00C2FF" />
+              <Text style={styles.cardMetaText}>{formatTime(item.event_time)}</Text>
+            </View>
           </View>
-          <View style={styles.cardMetaDot} />
-          <View style={styles.cardMetaItem}>
-            <Foundation name="calendar" size={11} color={accentColor} />
-            <Text style={[styles.cardMetaText, { color: accentColor }]}>
-              {item.event_date} • {formatTime(item.event_time)}
-            </Text>
-          </View>
+
+          {/* About Event - Expandable Description */}
+          {item.description && (
+            <View style={styles.cardAbout}>
+              <Text 
+                style={styles.cardAboutText} 
+                numberOfLines={isExpanded ? undefined : 2}
+              >
+                {item.description}
+              </Text>
+              {item.description.length > 100 && (
+                <TouchableOpacity 
+                   onPress={() => setIsExpanded(!isExpanded)}
+                   style={styles.cardReadMore}
+                >
+                  <Text style={styles.cardReadMoreText}>
+                    {isExpanded ? 'View Less' : 'View More'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
+
         <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
-          <Text style={[styles.cardFooterText, { color: accentColor }]}>
+          <Text style={styles.cardFooterText}>
             VIEW DETAILS ›
           </Text>
         </View>
       </TouchableOpacity>
     );
   };
+
+  const renderEvent = ({ item }) => <EventCard item={item} navigation={navigation} />;
+
 
   if (loading) {
     return (
@@ -361,7 +388,6 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 300, height: 300, borderRadius: 150,
     backgroundColor: '#FF5733', bottom: -50, left: -100, opacity: 0.03,
   },
-  // Styles for the Sync Button Header
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -388,7 +414,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 16, elevation: 10,
   },
   cardBanner: {
-    height: 150, width: '100%', justifyContent: 'flex-end',
+    height: 100, width: '100%', justifyContent: 'flex-end',
   },
   cardGradient: {
     padding: 16, width: '100%', flex: 1, justifyContent: 'space-between'
@@ -421,17 +447,21 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16,
-    marginBottom: 6, letterSpacing: -0.3
+    marginBottom: 6, letterSpacing: -0.3, marginTop: 12
   },
-  cardMetaRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16, gap: 8, flexWrap: 'wrap' },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12, gap: 12, flexWrap: 'wrap' },
   cardMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  cardMetaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.1)' },
-  cardMetaText: { color: '#C0D0E0', fontSize: 12, fontWeight: '600' },
+  cardMetaText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  cardAbout: { paddingHorizontal: 16, marginBottom: 12 },
+  cardAboutText: { color: '#A0AEC0', fontSize: 11, lineHeight: 16, fontWeight: '500' },
+  cardReadMore: { marginTop: 4 },
+  cardReadMoreText: { color: '#00C2FF', fontSize: 11, fontWeight: '700' },
   cardFooter: {
-    borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 4
+    borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 4,
+    alignItems: 'flex-end'
   },
   cardFooterText: {
-    fontSize: 12, fontWeight: '800', letterSpacing: 1.5
+    fontSize: 12, fontWeight: '800', color: '#00C2FF', letterSpacing: 1.5, textAlign: 'right'
   },
   centerContainer: {
     flex: 1,

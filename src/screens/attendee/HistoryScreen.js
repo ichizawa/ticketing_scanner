@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../context/AuthContext'
 import { BlurView } from 'expo-blur'
 import Header from '../../components/Header'
+import QRCode from 'react-native-qrcode-svg'
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 
 const { width, height } = Dimensions.get('window')
@@ -23,6 +24,17 @@ const formatTime = (time) => {
     } catch (e) {
         return time;
     }
+};
+
+const getTierColor = (type, name) => {
+    const t = String(type || name || '').toLowerCase();
+    if (t.includes('gold') || t.includes('vip') || t.includes('vvip')) return '#FFD700';
+    if (t.includes('silver')) return '#C0C0C0'; 
+    if (t.includes('bronze')) return '#CD7F32'; 
+    if (t.includes('platinum')) return '#E5E4E2'; 
+    if (t.includes('early')) return '#00E5A0'; 
+    if (t.includes('gen') || t.includes('standard') || t.includes('regular') || t.includes('admission')) return '#00C2FF'; 
+    return '#132035';
 };
 
 const getImageUrl = (path) => {
@@ -44,6 +56,8 @@ export default function HistoryScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
+    const [selectedTicket, setSelectedTicket] = useState(null);
+    const [isQRModalVisible, setIsQRModalVisible] = useState(false);
 
     const fetchHistory = async (isRefresh = false) => {
         try {
@@ -94,6 +108,7 @@ export default function HistoryScreen({ navigation }) {
                     status: ticket.sale?.status || ticket.status,
                     status_text: ticket.sale?.status || null,
                     event_id: eventId,
+                    seat_plan_url: eventDetails?.seat_plan_url || eventDetails?.seat_plan,
                 };
             });
         }
@@ -121,6 +136,11 @@ export default function HistoryScreen({ navigation }) {
     const onRefresh = () => {
         setRefreshing(true);
         fetchHistory(true);
+    };
+
+    const handleQRView = (ticket) => {
+        setSelectedTicket(ticket);
+        setIsQRModalVisible(true);
     };
 
     const handleLogout = () => {
@@ -196,12 +216,12 @@ export default function HistoryScreen({ navigation }) {
 
                 <View style={styles.cardContent}>
                     <Image
-                        source={{ uri: getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400' }}
+                        source={{ uri: getImageUrl(item.event_image) }}
                         style={styles.eventThumb}
                     />
                     <View style={styles.eventDetails}>
                         <View style={styles.categoryTag}>
-                            <Text style={styles.categoryTagText}>{(item.category || item.type || 'EVENT').toUpperCase()}</Text>
+                            <Text style={styles.categoryTagText}>{(item.category || item.type).toUpperCase()}</Text>
                         </View>
                         <Text style={styles.eventTitle} numberOfLines={1}>{item.event_name}</Text>
                         
@@ -229,8 +249,75 @@ export default function HistoryScreen({ navigation }) {
                     >
                         <Text style={styles.detailsBtnText}>VIEW DETAILS</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.qrBtn}
+                        onPress={() => handleQRView(item)}>
+                        <Text style={styles.qrBtnText}>VIEW QR</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
+        );
+    };
+
+    const renderQRModal = () => {
+        if (!selectedTicket) return null;
+        const tierColor = getTierColor(selectedTicket.category || selectedTicket.type || selectedTicket.ticket_type, selectedTicket.name);
+        
+        return (
+            <Modal
+                visible={isQRModalVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setIsQRModalVisible(false)}
+            >
+                <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+                    <TouchableOpacity 
+                        style={styles.modalDismiss} 
+                        activeOpacity={1} 
+                        onPress={() => setIsQRModalVisible(false)} 
+                    />
+                    <Animated.View style={styles.qrModalCard}>
+                        {/* <View style={styles.qrModalHeader}>
+                            <Text style={styles.qrModalTitle}>Electronic Ticket</Text>
+                        </View> */}
+
+                        <View style={styles.qrModalBody}>
+                            <Text style={styles.qrEventName}>{selectedTicket.event_name}</Text>
+                            <Text style={styles.qrTicketId}>Ticket ID: {selectedTicket.ticket_number || selectedTicket.id}</Text>
+                            
+                            <View style={[styles.qrContainer, { backgroundColor: `${tierColor}20`, borderColor: `${tierColor}` }]}>
+                                <View style={styles.qrWrapper}>
+                                    <QRCode
+                                        value={selectedTicket.ticket_number || selectedTicket.id.toString()}
+                                        size={180}
+                                        color="#000"
+                                        backgroundColor="#FFF"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.qrInfoGrid}>
+                                <View style={styles.qrInfoItem}>
+                                    <Text style={styles.qrInfoLabel}>DATE</Text>
+                                    <Text style={styles.qrInfoVal}>{selectedTicket.event_date}</Text>
+                                </View>
+                                <View style={styles.qrInfoItem}>
+                                    <Text style={styles.qrInfoLabel}>SCAN STATUS</Text>
+                                    <Text style={[styles.qrInfoVal, { color: '#00E5A0' }]}>READY</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity 
+                            style={styles.qrCloseBtn}
+                            onPress={() => setIsQRModalVisible(false)}
+                        >
+                            <Text style={styles.qrCloseBtnText}>CLOSE PREVIEW</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </BlurView>
+            </Modal>
         );
     };
 
@@ -277,6 +364,7 @@ export default function HistoryScreen({ navigation }) {
                         }
                     />
                 )}
+                {renderQRModal()}
             </SafeAreaView>
         </View>
     );
@@ -357,8 +445,28 @@ const styles = StyleSheet.create({
     loadingText: { color: '#00C2FF', fontSize: 14, marginTop: 15, fontWeight: '700' },
     errorText: { color: '#FF5733', fontSize: 12, marginTop: 10, textAlign: 'center', paddingHorizontal: 40 },
 
-    categoryTag: { alignSelf: 'flex-start', backgroundColor: '#FFD700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+    categoryTag: { backgroundColor: '#FFD700',alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
     categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
     detailsBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#132035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2E4A62' },
-    detailsBtnText: { color: '#00C2FF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }
+    detailsBtnText: { color: '#00C2FF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+    qrBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#00C2FF', alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+    qrBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+
+    // QR Modal
+    modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalDismiss: { ...StyleSheet.absoluteFillObject },
+    qrModalCard: { width: '100%', backgroundColor: '#FFF', borderRadius: 32, padding: 24, overflow: 'hidden' },
+    qrModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    qrModalTitle: { color: '#132035', fontSize: 12, fontWeight: '900', letterSpacing: 2 },
+    qrModalBody: { alignItems: 'center' },
+    qrEventName: { color: '#132035', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 4 },
+    qrTicketId: { color: '#7E97B3', fontSize: 12, fontWeight: '600', marginBottom: 30 },
+    qrContainer: { padding: 20, borderRadius: 24, marginBottom: 30, borderWidth: 1 },
+    qrWrapper: { padding: 10, backgroundColor: '#FFF', borderRadius: 12 },
+    qrInfoGrid: { width: '100%', flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F4F7FA', paddingTop: 20, marginBottom: 20 },
+    qrInfoItem: { flex: 1, alignItems: 'center' },
+    qrInfoLabel: { color: '#7E97B3', fontSize: 10, fontWeight: '800', marginBottom: 4 },
+    qrInfoVal: { color: '#132035', fontSize: 13, fontWeight: '800' },
+    qrCloseBtn: { width: '100%', height: 60, backgroundColor: '#132035', borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    qrCloseBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 1 }
 });

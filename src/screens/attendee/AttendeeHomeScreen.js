@@ -116,8 +116,8 @@ export default function HomeScreen({ navigation }) {
 
   const allFutureEvents = [...activeEvents, ...upcomingEvents];
 
-  // Hero: Prioritize Active, then Upcoming
-  const heroData = activeEvents.length > 0 ? activeEvents.slice(0, 3) : upcomingEvents.slice(0, 3);
+  // Hero: Show Active first, then Upcoming — both together
+  const heroData = [...activeEvents, ...upcomingEvents].slice(0, 5);
 
   // Don't Miss: Future items happening this week (within 7 days)
   const missThisWeek = allFutureEvents.filter(e => (e.event_date || '') <= nextWeekStr).slice(0, 8);
@@ -230,7 +230,7 @@ export default function HomeScreen({ navigation }) {
                 {clonedHeroEvents.map((event, idx) => (
                   <View key={`${event.id}-${idx}`} style={styles.heroCard}>
                     <ImageBackground
-                      source={{ uri: event.event_image_url || getImageUrl(event.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+                      source={{ uri: event.event_image_url || getImageUrl(event.event_image) }}
                       style={styles.heroBg}
                     >
                       <LinearGradient
@@ -243,7 +243,7 @@ export default function HomeScreen({ navigation }) {
                           </Text>
                         </View>
                         <Text style={styles.heroTitle}>{event.event_name}</Text>
-                        <View style={styles.heroMetaRow}>
+                        {/* <View style={styles.heroMetaRow}>
                           <View style={styles.heroMetaItem}>
                             <Foundation name="marker" size={13} color="#00C2FF" />
                             <Text style={[styles.heroMetaText, { color: '#FFF' }]}>{event.event_venue || 'TBA'}</Text>
@@ -253,7 +253,7 @@ export default function HomeScreen({ navigation }) {
                             <Foundation name="calendar" size={13} color="#00C2FF" />
                             <Text style={[styles.heroMetaText, { color: '#FFF' }]}>{event.event_date}</Text>
                           </View>
-                        </View>
+                        </View> */}
                         <Text style={styles.heroSubtitle} numberOfLines={2}>{event.description}</Text>
 
                         <TouchableOpacity
@@ -322,12 +322,12 @@ export default function HomeScreen({ navigation }) {
                   <View key={item.id} style={styles.verticalCard}>
                     <View style={styles.vCardTop}>
                       <Image
-                        source={{ uri: item.event_image_url || getImageUrl(item.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800' }}
+                        source={{ uri: item.event_image_url || getImageUrl(item.event_image) }}
                         style={styles.vCardImg}
                       />
                       <View style={styles.vGenreTag}>
                         <Text style={styles.vGenreText}>
-                          {(item.category || item.event_category || 'EVENT').toUpperCase()}
+                          {(item.category || 'EVENT').toUpperCase()}
                         </Text>
                       </View>
                     </View>
@@ -359,7 +359,9 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Explore Events</Text>
-              <TouchableOpacity><Text style={styles.seeMoreBtn}>View More</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('ExploreEvents')}>
+                <Text style={styles.seeMoreBtn}>View More</Text>
+              </TouchableOpacity>
             </View>
             {exploreEvents.length > 0 ? (
               exploreEvents.map(item => {

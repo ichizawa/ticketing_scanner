@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NetInfo from '@react-native-community/netinfo';
@@ -88,7 +88,7 @@ export default function EventOrganizerScreen({ navigation, route }) {
 
             const json = await res.json();
             const all = json.data || json.tickets || json;
-            
+
             const filteredTickets = Array.isArray(all) ? all.filter(t => t.event_id == event.id) : [];
             setTickets(filteredTickets);
         } catch (e) {
@@ -213,91 +213,90 @@ export default function EventOrganizerScreen({ navigation, route }) {
                     contentContainerStyle={styles.scrollContent}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00E5A0" />}
                 >
-                    {/* Enhanced Event Header */}
+                    {/* Event Header — attendee style */}
                     <View style={styles.eventHeader}>
-                        <View style={styles.headerContent}>
-                            <View style={styles.titleRow}>
-                                <MaterialCommunityIcons name="calendar-star" size={28} color="#00E5A0" />
-                                <View style={styles.titleContainer}>
-                                    <Text style={styles.eventTitle} numberOfLines={2}>{event.title || event.event_name}</Text>
+                        <Image
+                            source={{ uri: event.imageUrl || event.event_image_url }}
+                            style={styles.bannerImage}
+                        />
+                        <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(5, 10, 20, 0.65)' }]} />
+                        <View style={styles.bannerContent}>
+                            <View style={styles.bannerTopRow}>
+                                {event.category ? (
+                                    <View style={styles.categoryTag}>
+                                        <Text style={styles.categoryTagText}>{String(event.category).toUpperCase()}</Text>
+                                    </View>
+                                ) : <View />}
+                            </View>
+                            <Text style={styles.eventTitle} numberOfLines={2}>{event.title || event.event_name}</Text>
+                            <View style={styles.heroMetaRow}>
+                                <View style={styles.heroMetaItem}>
+                                    <Ionicons name="location-outline" size={13} color="#00C2FF" />
+                                    <Text style={styles.heroMetaText}>{event.venue || event.event_venue || 'TBA'}</Text>
+                                </View>
+                                <View style={styles.heroMetaItem}>
+                                    <Ionicons name="calendar-outline" size={13} color="#00C2FF" />
+                                    <Text style={styles.heroMetaText}>{event.date || event.event_date}</Text>
+                                </View>
+                                <View style={styles.heroMetaItem}>
+                                    <Ionicons name="time-outline" size={13} color="#00C2FF" />
+                                    <Text style={styles.heroMetaText}>{event.time || formatTime(event.event_time)}</Text>
                                 </View>
                             </View>
-                            <View style={styles.venueRow}>
-                                <Ionicons name="location-outline" size={16} color="#4A8AAF" />
-                                <Text style={styles.eventVenue}>{event.venue || event.event_venue}</Text>
-                            </View>
-                            <View style={styles.dateRow}>
-                                <Ionicons name="time-outline" size={16} color="#4A8AAF" />
-                                <Text style={styles.eventMeta}>{event.schedule || `${event.event_date} • ${formatTime(event.event_time)}`}</Text>
-                            </View>
-                        </View>
-                        <View style={[styles.statusPill, { backgroundColor: statusConfig.color + '20' }]}>
-                            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-                            <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
                         </View>
                     </View>
 
-                    {/* Prominent Progress Section */}
-                    <View style={styles.progressSection}>
-                        <View style={styles.progressCard}>
-                            <View style={styles.progressHeader}>
-                                <Text style={styles.progressTitle}>Check-in Progress</Text>
-                                <Text style={styles.progressPercentage}>{scanPercentage}%</Text>
-                            </View>
-                            <View style={styles.progressTrack}>
-                                <View
-                                    style={[
-                                        styles.progressFill,
-                                        {
-                                            width: `${scanPercentage}%`,
-                                            backgroundColor: scanPercentage >= 75 ? '#00E5A0' : scanPercentage >= 50 ? '#00C2FF' : '#FFAA00'
-                                        }
-                                    ]}
-                                />
-                            </View>
-                            <View style={styles.progressStats}>
-                                <Text style={styles.progressStatsText}>
-                                    {scannedCount} of {totalCount} tickets scanned
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Enhanced Stats Grid */}
+                    {/* Live Analytics */}
                     <View style={styles.statsSection}>
                         <Text style={styles.sectionTitle}>Live Analytics</Text>
-                        <View style={styles.statsGrid}>
-                            <View style={[styles.statCard, styles.scannedCard]}>
-                                <View style={styles.statIconContainer}>
-                                    <Ionicons name="checkmark-circle" size={24} color="#00E5A0" />
+                        <View style={styles.statsBar}>
+                            <View style={styles.statItem}>
+                                <Ionicons name="checkmark-circle" size={18} color="#00E5A0" style={{ marginBottom: 4 }} />
+                                <Text style={[styles.statValue, { color: '#00E5A0' }]}>{scannedCount.toLocaleString()}</Text>
+                                <Text style={styles.statLabel}>SCANNED</Text>
+                            </View>
+                            <View style={styles.statDivider} />
+                            <View style={[styles.statItem, { flex: 1.4 }]}>
+                                <MaterialCommunityIcons name="chart-pie" size={18} color="#FFAA00" style={{ marginBottom: 4 }} />
+                                <Text style={[styles.statValue, { color: '#FFF', fontSize: 22 }]}>{totalCount.toLocaleString()}</Text>
+                                <Text style={styles.statLabel}>CAPACITY</Text>
+                            </View>
+                            <View style={styles.statDivider} />
+                            <View style={styles.statItem}>
+                                <Ionicons name="trending-up" size={18} color="#FF6B9D" style={{ marginBottom: 4 }} />
+                                <Text style={[styles.statValue, { color: '#FF6B9D' }]}>{scanPercentage}%</Text>
+                                <Text style={styles.statLabel}>SCAN RATE</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Check-in Counter Card */}
+                    <View style={[styles.progressSection, { shadowColor: scanPercentage >= 75 ? '#00E5A0' : scanPercentage >= 50 ? '#00C2FF' : '#FFAA00' }]}>
+                        <View style={styles.progressCard}>
+                            <View style={styles.progressHeader}>
+                                <View>
+                                    <Text style={styles.progressTitle}>TOTAL CHECKED IN</Text>
+                                    <Text style={styles.progressCountBig}>
+                                        {scannedCount.toLocaleString()}
+                                        <Text style={styles.progressCountSub}> / {totalCount > 0 ? totalCount.toLocaleString() : '\u221e'}</Text>
+                                    </Text>
                                 </View>
-                                <View style={styles.statContent}>
-                                    <Text style={styles.statValue}>{scannedCount}</Text>
-                                    <Text style={styles.statLabel}>Verified Entries</Text>
-                                    <Text style={styles.statSubtext}>Successfully scanned</Text>
+                                <View style={[styles.pctBadge, {
+                                    borderColor: (scanPercentage >= 75 ? '#00E5A0' : scanPercentage >= 50 ? '#00C2FF' : '#FFAA00') + '50',
+                                    backgroundColor: (scanPercentage >= 75 ? '#00E5A0' : scanPercentage >= 50 ? '#00C2FF' : '#FFAA00') + '15'
+                                }]}>
+                                    <Text style={[styles.pctBadgeText, { color: scanPercentage >= 75 ? '#00E5A0' : scanPercentage >= 50 ? '#00C2FF' : '#FFAA00' }]}>{scanPercentage}%</Text>
                                 </View>
                             </View>
-
-                            <View style={[styles.statCard, styles.capacityCard]}>
-                                <View style={styles.statIconContainer}>
-                                    <MaterialCommunityIcons name="chart-pie" size={24} color="#FFAA00" />
-                                </View>
-                                <View style={styles.statContent}>
-                                    <Text style={styles.statValue}>{totalCount}</Text>
-                                    <Text style={styles.statLabel}>Total Capacity</Text>
-                                    <Text style={styles.statSubtext}>Event capacity</Text>
-                                </View>
+                            <View style={styles.progressTrack}>
+                                <View style={[styles.progressFill, {
+                                    width: `${scanPercentage}%`,
+                                    backgroundColor: scanPercentage >= 75 ? '#00E5A0' : scanPercentage >= 50 ? '#00C2FF' : '#FFAA00'
+                                }]} />
                             </View>
-
-                            <View style={[styles.statCard, styles.rateCard]}>
-                                <View style={styles.statIconContainer}>
-                                    <Ionicons name="trending-up" size={24} color="#FF6B9D" />
-                                </View>
-                                <View style={styles.statContent}>
-                                    <Text style={styles.statValue}>{scanPercentage}%</Text>
-                                    <Text style={styles.statLabel}>Scan Rate</Text>
-                                    <Text style={styles.statSubtext}>Of total capacity</Text>
-                                </View>
+                            <View style={styles.progressStats}>
+                                <Text style={styles.progressStatLeft}>{Math.max(0, totalCount - scannedCount).toLocaleString()} remaining</Text>
+                                <Text style={styles.progressStatsText}>Live Check-in Rate</Text>
                             </View>
                         </View>
                     </View>
@@ -323,57 +322,59 @@ const styles = StyleSheet.create({
     offlineBannerTitle: { color: '#FFD5DB', fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 2 },
     offlineBannerText: { color: '#FFB7C2', fontSize: 13 },
 
-    // Enhanced Event Header
-    eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-    headerContent: { flex: 1, marginRight: 16 },
-    titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
-    titleContainer: { flex: 1, marginLeft: 12 },
-    eventTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', lineHeight: 28 },
-    venueRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    eventVenue: { color: '#4A8AAF', fontSize: 15, fontWeight: '600', marginLeft: 8 },
-    dateRow: { flexDirection: 'row', alignItems: 'center' },
-    eventMeta: { color: '#4A8AAF', fontSize: 14, fontWeight: '500', marginLeft: 8 },
-    statusPill: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
-    statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-    statusText: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+    // Event Header — attendee style (edge-to-edge)
+    eventHeader: { marginHorizontal: -20, marginBottom: 24, height: 240, position: 'relative' },
+    bannerImage: { width: '100%', height: '100%' },
+    bannerOverlay: { ...StyleSheet.absoluteFillObject },
+    bannerContent: { position: 'absolute', bottom: 20, left: 20, right: 20 },
+    bannerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+    categoryTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+    categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+    eventTitle: { color: '#FFF', fontSize: 24, fontWeight: '900', marginBottom: 10, lineHeight: 30 },
+    heroMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+    heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    heroMetaText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
     // Prominent Progress Section
-    progressSection: { marginBottom: 24 },
+    progressSection: { marginBottom: 20, elevation: 10, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
     progressCard: {
-        backgroundColor: '#0B1623', borderRadius: 16, padding: 20,
+        backgroundColor: '#0B1623', borderRadius: 24, padding: 22,
         borderWidth: 1, borderColor: '#132035',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15, shadowRadius: 8, elevation: 6,
     },
-    progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    progressTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    progressPercentage: { color: '#00E5A0', fontSize: 18, fontWeight: '900' },
-    progressTrack: { height: 12, backgroundColor: '#0F1E30', borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
-    progressFill: { height: '100%', borderRadius: 6 },
-    progressStats: { alignItems: 'center' },
-    progressStatsText: { color: '#4A8AAF', fontSize: 14, fontWeight: '600' },
+    progressHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    progressTitle:     { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
+    progressCountBig:  { color: '#FFF', fontSize: 32, fontWeight: '800' },
+    progressCountSub:  { color: '#3D6080', fontSize: 20, fontWeight: '600' },
+    pctBadge:          { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+    pctBadgeText:      { fontSize: 18, fontWeight: '900' },
+    progressTrack:     { height: 10, backgroundColor: '#132035', borderRadius: 5, overflow: 'hidden', marginVertical: 14 },
+    progressFill:      { height: '100%', borderRadius: 5 },
+    progressStats:     { flexDirection: 'row', justifyContent: 'space-between' },
+    progressStatLeft:  { color: '#FFF', fontSize: 12, fontWeight: '600' },
+    progressStatsText: { color: '#3D6080', fontSize: 12, fontWeight: '600' },
+    progressPercentage:{ color: '#00E5A0', fontSize: 18, fontWeight: '900' },
 
-    // Enhanced Stats Section
+    // Stats Bar — mirrors MerchantHomeScreen statsBar
     statsSection: { marginBottom: 24 },
     sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginBottom: 16, paddingHorizontal: 4 },
-    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    statCard: {
-        flex: 1, minWidth: '48%', backgroundColor: '#0B1623', borderRadius: 16, padding: 16,
-        borderWidth: 1, borderColor: '#132035',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+    statsBar: {
+        flexDirection: 'row', backgroundColor: '#0B1623', borderRadius: 14, paddingVertical: 12,
+        borderWidth: 1, borderColor: '#00C2FF',
     },
-    statIconContainer: { marginBottom: 12 },
-    statContent: { alignItems: 'center' },
-    statValue: { fontSize: 28, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
-    statLabel: { color: '#4A8AAF', fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 2 },
-    statSubtext: { color: '#4A8AAF', fontSize: 11, fontWeight: '500' },
+    statItem:    { flex: 1, alignItems: 'center' },
+    statValue:   { fontSize: 20, fontWeight: '800', letterSpacing: -0.5, marginBottom: 2 },
+    statLabel:   { color: '#3D6080', fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
+    statDivider: { width: 1, backgroundColor: '#00C2FF', marginVertical: 6 },
 
-    // Card specific styles
-    scannedCard: { borderColor: '#00E5A0' },
-    remainingCard: { borderColor: '#00C2FF' },
-    capacityCard: { borderColor: '#FFFFFF' },
-    rateCard: { borderColor: '#FF6B9D' },
+    // (kept for unused style refs)
+    statCard:       { flex: 1, minWidth: '48%', backgroundColor: '#0B1623', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#132035' },
+    statIconContainer: { marginBottom: 12 },
+    statContent:    { alignItems: 'center' },
+    statSubtext:    { color: '#4A8AAF', fontSize: 11, fontWeight: '500' },
+    scannedCard:    { borderColor: '#00E5A0' },
+    remainingCard:  { borderColor: '#00C2FF' },
+    capacityCard:   { borderColor: '#FFFFFF' },
+    rateCard:       { borderColor: '#FF6B9D' },
 
     // Enhanced Status Section
     statusSection: { alignItems: 'center', marginTop: 8, marginBottom: 20 },

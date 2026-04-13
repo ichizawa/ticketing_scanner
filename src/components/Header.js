@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal } from 'react-native';
-import { Entypo } from '@expo/vector-icons';
+import { Entypo, Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
 
 export default function Header({ navigation, onBack }) {
@@ -16,8 +16,8 @@ export default function Header({ navigation, onBack }) {
     <>
       <View style={styles.header}>
         {onBack ? (
-          <TouchableOpacity onPress={onBack} style={styles.menuBtn} activeOpacity={0.7}>
-            <Text style={styles.backArrow}>‹</Text>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color="#FFF" />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -39,7 +39,7 @@ export default function Header({ navigation, onBack }) {
         </View>
 
         <TouchableOpacity onPress={() => setLogoutModalVisible(true)} style={styles.profileBtn}>
-          <View style={styles.profileAvatar} />
+          <Entypo name="log-out" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
 
@@ -86,15 +86,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 12,
   },
+    backBtn: {
+      width: 40, height: 40,
+      alignItems: 'center', justifyContent: 'center',
+    },
     menuBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start', gap: 5 },
     menuLine: { width: 24, height: 2.5, backgroundColor: '#FFFFFF', borderRadius: 2 },
-    backArrow: { color: '#FFFFFF', fontSize: 30, fontWeight: '300', marginLeft: 2, lineHeight: 36 },
     headerCenter: { flex: 1, alignItems: 'center' },
     headerTitle: { fontSize: 20 },
     headerMedia: { color: '#FFFFFF', fontWeight: '600' },
     headerTix: { color: '#00C2FF', fontWeight: '800' },
-    profileBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
-    profileAvatar: { flex: 1, borderRadius: 17, backgroundColor: '#4A8AAF', opacity: 0.8 },
+    // profileBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#132035', justifyContent: 'center', alignItems: 'center' },
+    // profileAvatar: { flex: 1, borderRadius: 17, backgroundColor: '#4A8AAF', opacity: 0.8 },
 
   // Modal
   modalOverlay: {

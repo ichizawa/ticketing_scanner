@@ -36,6 +36,17 @@ const getImageUrl = (path) => {
     return `${baseUrl}/storage/${cleanPath}`;
 };
 
+const getTierColor = (type, name) => {
+    const t = String(type || name || '').toLowerCase();
+    if (t.includes('gold') || t.includes('vip')) return '#FFD700';
+    if (t.includes('silver')) return '#C0C0C0'; 
+    if (t.includes('bronze')) return '#CD7F32'; 
+    if (t.includes('platinum')) return '#E5E4E2'; 
+    if (t.includes('early')) return '#00E5A0'; 
+    if (t.includes('gen') || t.includes('standard') || t.includes('regular')) return '#00C2FF'; 
+    return '#132035';
+};
+
 export default function AttendeeEventDetailsScreen({ navigation, route }) {
     const { userInfo, logout } = useContext(AuthContext);
     const { event } = route.params || {};
@@ -49,7 +60,7 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
     // Initial event data from params or defaults
     const displayEvent = {
         title: event?.event_name,
-        banner: event?.event_image_url || getImageUrl(event?.event_image) || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800',
+        banner: event?.event_image_url || getImageUrl(event?.event_image),
         date: event?.event_date,
         time: event?.event_time,
         venue: event?.event_venue,
@@ -57,8 +68,7 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
         description: event?.description
     };
 
-    const artists = event?.artists || [];
-    const seatMap = event?.seat_plan_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=800';
+    const seatMap = event?.seat_plan_url;
 
     useEffect(() => {
         if (event?.id && userInfo?.token) {
@@ -108,6 +118,8 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
         <Header navigation={navigation} onBack={() => navigation.goBack()} />
     );
 
+    const artists = event?.artists || [];
+
     const renderArtistCard = ({ item }) => {
         const isExpanded = expandedArtist === item.id;
         return (
@@ -147,7 +159,13 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                             />
                             <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(5, 10, 20, 0.7)' }]} />
                             <View style={styles.bannerContent}>
-                                <View style={styles.categoryTag}><Text style={styles.categoryTagText}>{displayEvent.category.toUpperCase()}</Text></View>
+                                {(event.category) && (
+                                    <View style={styles.categoryTag}>
+                                        <Text style={styles.categoryTagText}>
+                                            {(event.category).toUpperCase()}
+                                        </Text>
+                                    </View>
+                                )}
                                 <Text style={styles.eventTitle}>{displayEvent.title}</Text>
                                 <View style={styles.heroMetaRow}>
                                     <View style={styles.heroMetaItem}>
@@ -223,33 +241,41 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                                 <ActivityIndicator size="small" color="#00C2FF" />
                                 <Text style={[styles.loadingText, { color: '#00C2FF' }]}>Loading ticket tiers…</Text>
                             </View>
-                        ) : tickets.length > 0 ? tickets.map(tier => (
-                            <View
-                                key={tier.id}
-                                style={[
-                                    styles.tierCard,
-                                    { borderColor: '#132035' }
-                                ]}
-                            >
-                                <View style={styles.tierHeader}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.tierName}>{tier.name.toUpperCase()}</Text>
-                                        <Text style={styles.tierType}>{tier.type || 'Standard Entry'}</Text>
-                                        <View style={styles.availTagRow}>
-                                            <View style={[styles.availDot, { backgroundColor: (tier.quantity > 0) ? '#00E5A0' : '#FF5733' }]} />
-                                            <Text style={styles.availText}>{tier.quantity > 0 ? 'Available' : 'Sold Out'}</Text>
+                        ) : tickets.length > 0 ? tickets.map(tier => {
+                            const isAvailable = tier.quantity > 0;
+                            const tierColor = getTierColor(tier.type, tier.name);
+                            return (
+                                <View key={tier.id} style={[styles.passCard, { borderColor: tierColor }]}>
+                                    <View style={styles.passTop}>
+                                        <View style={styles.passHeader}>
+                                            <Text style={styles.passTitle}>{tier.name.toUpperCase()}</Text>
+                                            <View style={[styles.passBadge, { borderColor: isAvailable ? 'rgba(0, 229, 160, 0.3)' : 'rgba(255, 87, 51, 0.3)' }]}>
+                                                <Text style={[styles.passBadgeText, { color: isAvailable ? '#00E5A0' : '#FF5733' }]}>
+                                                    {isAvailable ? 'AVAILABLE' : 'SOLD OUT'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <Text style={[styles.passType, { color: tierColor !== '#132035' ? tierColor : '#7E97B3' }]}>{tier.type || 'ADMISSION ENTRY'}</Text>
+                                        
+                                        <View style={styles.passInclusionsRow}>
+                                            <Foundation name="check" size={12} color="#4A8AAF" style={{ marginTop: 2 }} />
+                                            <Text style={styles.passInclusionsText}>{tier.inclusions}</Text>
                                         </View>
                                     </View>
-                                    <View style={styles.tierPriceControl}>
-                                        <Text style={styles.tierPrice}>₱{(tier.price || 0).toLocaleString()}</Text>
+
+                                    <View style={styles.passDividerRow}>
+                                        <View style={[styles.notchLeft, { borderColor: tierColor }]} />
+                                        <View style={styles.dashedLine} />
+                                        <View style={[styles.notchRight, { borderColor: tierColor }]} />
+                                    </View>
+
+                                    <View style={styles.passBottom}>
+                                        <Text style={styles.passPriceLabel}>TICKET PRICE</Text>
+                                        <Text style={styles.passPriceValue}>₱{(tier.price || 0).toLocaleString()}</Text>
                                     </View>
                                 </View>
-                                <View style={styles.tierPerksRow}>
-                                    <View style={styles.perkDot} />
-                                    <Text style={styles.perkText}>{tier.perks || tier.description || 'Standard Access'}</Text>
-                                </View>
-                            </View>
-                        )) : (
+                            );
+                        }) : (
                             <Text style={styles.emptyText}>No ticket tiers available</Text>
                         )}
 
@@ -329,20 +355,31 @@ const styles = StyleSheet.create({
     mapOverlay: { position: 'absolute', bottom: 15, left: 0, right: 0, alignItems: 'center' },
     mapHint: { color: '#FFF', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
 
-    // Tier Selection (Revised V5)
-    tierCard: { marginHorizontal: 20, backgroundColor: '#0B1623', borderRadius: 24, padding: 20, marginBottom: 12, borderWidth: 1.5, borderColor: '#132035' },
-    tierHeader: { flexDirection: 'row', alignItems: 'flex-start' },
-    tierName: { color: '#FFF', fontSize: 17, fontWeight: '800' },
-    tierType: { color: '#4A5568', fontSize: 11, marginTop: 2 },
-    availTagRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-    availDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-    availText: { color: '#4A5568', fontSize: 9, fontWeight: '800' },
-    tierPriceControl: { alignItems: 'flex-end', marginLeft: 15 },
-    tierPrice: { color: '#00C2FF', fontSize: 18, fontWeight: '900', marginBottom: 8 },
+    // Modern Boarding Pass Style (Clean/Minimal)
+    passCard: {
+        marginHorizontal: 20, backgroundColor: 'rgba(11, 22, 35, 0.5)', borderRadius: 16, marginBottom: 16, 
+        borderWidth: 1, borderColor: '#132035', overflow: 'hidden'
+    },
+    passTop: { padding: 16, paddingBottom: 12 },
+    passHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+    passTitle: { flexShrink: 1, color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+    passBadge: { backgroundColor: 'transparent', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 10 },
+    passBadgeText: { fontSize: 8, fontWeight: '800', letterSpacing: 1 },
+    passType: { color: '#7E97B3', fontSize: 11, fontWeight: '600', marginBottom: 12 },
+    
+    passInclusionsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+    passInclusionsText: { flex: 1, color: '#A0AEC0', fontSize: 11, lineHeight: 16 },
 
-    tierPerksRow: { flexDirection: 'row', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#132035' },
-    perkDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#3D6080', marginRight: 8 },
-    perkText: { color: '#3D6080', fontSize: 10, flex: 1 },
+    passDividerRow: { flexDirection: 'row', alignItems: 'center', height: 16, position: 'relative' },
+    notchLeft: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#050A14', position: 'absolute', left: -9, zIndex: 2, borderWidth: 1, borderColor: '#132035' },
+    notchRight: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#050A14', position: 'absolute', right: -9, zIndex: 2, borderWidth: 1, borderColor: '#132035' },
+    dashedLine: { flex: 1, height: 1, marginHorizontal: 16, borderTopWidth: 1, borderColor: '#1A2A44', borderStyle: 'dashed' },
+
+    passBottom: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    passPriceLabel: { color: '#4A5568', fontSize: 9, fontWeight: '700', letterSpacing: 1 },
+    passPriceValue: { color: '#00C2FF', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
+    passActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    passActionText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
     // Modal
     modalBg: { flex: 1, backgroundColor: 'rgba(5, 10, 20, 0.98)', justifyContent: 'center', alignItems: 'center' },

@@ -1,9 +1,10 @@
-import { StyleSheet, Text, View, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import Header from '../../components/Header';
 import { API_BASE_URL } from '../../config';
+import { Foundation } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -32,24 +33,38 @@ const getStatusConfig = (statusCode) => {
   }
 };
 
+const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  const baseUrl = API_BASE_URL.replace('/api/v1', '');
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+};
+
 const transformEvent = (apiEvent) => {
   const statusConfig = getStatusConfig(apiEvent.status);
-  const statusStr = String(apiEvent.status || '').toUpperCase();
 
   return {
     id: apiEvent.id?.toString() || Math.random().toString(),
-    title: apiEvent.event_name || 'Unnamed Event',
-    venue: apiEvent.event_venue || 'TBA',
-    schedule: `${apiEvent.event_date || 'TBA'} • ${formatTime(apiEvent.event_time)}`,
+    title: apiEvent.event_name,
+    venue: apiEvent.event_venue,
+    schedule: `${apiEvent.event_date} • ${formatTime(apiEvent.event_time)}`,
+    date: apiEvent.event_date,
+    time: formatTime(apiEvent.event_time),
     status: statusConfig.label,
     statusColor: statusConfig.color,
     statusCode: apiEvent.status,
+    category: apiEvent.category,
+    scanned: parseInt(apiEvent.scanned_tickets) || parseInt(apiEvent.scanned_count) || 0,
+    totalTickets: parseInt(apiEvent.event_total_tickets) || 0,
+    accentColor: '#00C2FF',
+    imageUrl: apiEvent.event_image_url || getImageUrl(apiEvent.event_image) || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=800',
   };
 };
 
 export default function EventScreen({ navigation }) {
   const { userInfo } = useContext(AuthContext);
-  
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,10 +110,10 @@ export default function EventScreen({ navigation }) {
 
       const json = await response.json();
       const eventData = json.data || json.events || json;
-      
+
       const formattedEvents = (Array.isArray(eventData) ? eventData : []).map(transformEvent);
       setEvents(formattedEvents);
-      
+
     } catch (err) {
       setError(err.message || 'Failed to load events');
       console.error('Error fetching events:', err);
@@ -152,7 +167,7 @@ export default function EventScreen({ navigation }) {
       <SafeAreaView style={styles.safeArea}>
         <Header navigation={navigation} />
 
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
@@ -177,7 +192,7 @@ export default function EventScreen({ navigation }) {
           {/* Empty State */}
           {events.length === 0 && (
             <View style={[styles.centerContainer, { marginTop: 40 }]}>
-               <Text style={styles.pageHeadSub}>No events assigned to you right now.</Text>
+              <Text style={styles.pageHeadSub}>No events assigned to you right now.</Text>
             </View>
           )}
 
@@ -187,32 +202,61 @@ export default function EventScreen({ navigation }) {
             return (
               <TouchableOpacity
                 key={ev.id}
-                style={[
-                  styles.eventCard,
-                ]}
-                activeOpacity={0.8}
+                style={styles.ticketCard}
                 onPress={() => navigation.navigate('EventOrganizer', { event: ev })}
+                activeOpacity={0.8}
               >
-                <View style={styles.cardTopRow}>
-                  <View style={[styles.statusPill, { backgroundColor: ev.statusColor + '18' }]}>
-                    <Text style={[styles.statusText, { color: ev.statusColor }]}>{ev.status}</Text>
+                {/* Main Event Area (Left) */}
+                <View style={styles.ticketMain}>
+                  <Image source={{ uri: ev.imageUrl }} style={styles.ticketThumb} />
+                  <View style={styles.ticketHeaderInfo}>
+                    <View style={styles.ticketTagsRow}>
+                      <View style={[styles.statusBadgeMain, { backgroundColor: ev.statusColor + '15', borderColor: ev.statusColor + '30' }]}>
+                        <Text style={[styles.statusBadgeText, { color: ev.statusColor }]}>{String(ev.status || '').toUpperCase()}</Text>
+                      </View>
+                      <View style={styles.categoryBadge}>
+                        <Text style={styles.categoryText} numberOfLines={1}>{String(ev.category).toUpperCase()}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.ticketTitle} numberOfLines={2}>{String(ev.title).toUpperCase()}</Text>
+
+                    <View style={styles.ticketMetaRow}>
+                       <Foundation name="marker" size={11} color="#00C2FF" />
+                       <Text style={[styles.ticketMetaText, { color: '#00C2FF' }]} numberOfLines={1}>{ev.venue}</Text>
+                    </View>
+                    
+                    <View style={[styles.ticketMetaRow, { gap: 12 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Foundation name="calendar" size={11} color="#00C2FF" />
+                        <Text style={styles.ticketMetaText} numberOfLines={1}>{ev.date}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Foundation name="clock" size={11} color="#00C2FF" />
+                        <Text style={styles.ticketMetaText} numberOfLines={1}>{ev.time}</Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
 
-                <Text style={styles.cardTitle}>{ev.title}</Text>
-                <Text style={styles.cardVenue}>{ev.venue}</Text>
-                <Text style={[styles.cardSchedule]}>{ev.schedule}</Text>
-                <View style={styles.miniRow}>
-                  <View style={styles.miniTrack}>
-                    <View
-                      style={[
-                        styles.miniFill,
-                        { width: `${pct}%`, backgroundColor: ev.accentColor }
-                      ]}
-                    />
+                {/* Vertical Cutout/Perforation */}
+                <View style={styles.tearLineVertical}>
+                  <View style={styles.tearCutTop} />
+                  <View style={styles.tearDotsWrapVertical}>
+                    {[...Array(6)].map((_, i) => <View key={i} style={styles.tearDotVertical} />)}
+                  </View>
+                  <View style={styles.tearCutBottom} />
+                </View>
+
+                {/* Stub Area (Right) */}
+                <View style={styles.ticketStub}>
+                  <Text style={[styles.stubValue, { color: ev.statusColor }]}>{ev.scanned.toLocaleString()}</Text>
+                  <Text style={styles.stubLabel}>SCANNED</Text>
+
+                  <View style={styles.stubProgressTrack}>
+                    <View style={[styles.stubProgressFill, { width: `${pct}%`, backgroundColor: ev.statusColor }]} />
                   </View>
                 </View>
-                <View style={{ height: 16 }} /> 
               </TouchableOpacity>
             );
           })}
@@ -240,28 +284,36 @@ const styles = StyleSheet.create({
     shadowColor: '#00E5A0', shadowOpacity: 0.9, shadowRadius: 8, elevation: 6
   },
 
-  eventCard: {
-    backgroundColor: '#0B1623', borderRadius: 20, borderWidth: 1,
-    marginBottom: 16, overflow: 'hidden', shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25,
-    shadowRadius: 16, elevation: 10,
+  ticketCard: {
+    flexDirection: 'row', backgroundColor: '#0B1623', borderRadius: 20, marginBottom: 16,
+    borderWidth: 1, borderColor: '#132035', overflow: 'hidden'
   },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, paddingBottom: 10 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '800' },
+  ticketMain: { flex: 1, padding: 14, flexDirection: 'row', alignItems: 'center' },
+  ticketThumb: { width: 68, height: 68, borderRadius: 12, marginRight: 12, backgroundColor: '#132035' },
+  ticketHeaderInfo: { flex: 1, paddingRight: 4 },
 
-  accentTag: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  accentTagText: { fontSize: 10, fontWeight: '800' },
+  ticketTagsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 },
+  statusBadgeMain: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0, 229, 160, 0.1)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(0, 229, 160, 0.2)' },
+  categoryBadge: { flexShrink: 1, backgroundColor: 'rgba(255, 215, 0, 0.1)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.2)' },
+  categoryText: { color: '#FFD700', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
 
-  cardTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16, marginBottom: 4 },
-  cardVenue: { color: '#4A8AAF', fontSize: 12, fontWeight: '500', paddingHorizontal: 16 },
-  cardSchedule: {color: '#4A8AAF', fontSize: 12, fontWeight: '700', paddingHorizontal: 16 },
+  ticketTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', marginBottom: 8, letterSpacing: 0 },
+  ticketMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+  ticketMetaText: { color: '#7E97B3', fontSize: 10, fontWeight: '600' },
 
-  miniRow: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
-  miniTrack: { flex: 1, height: 4, backgroundColor: '#0F1E30', borderRadius: 2, overflow: 'hidden' },
-  miniFill: { height: '100%', borderRadius: 2 },
-  miniCount: { color: '#2A4A60', fontSize: 11 },
+  tearLineVertical: { width: 20, alignItems: 'center', position: 'relative' },
+  tearCutTop: { position: 'absolute', top: -10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#050A14', borderWidth: 1, borderColor: '#132035', zIndex: 2 },
+  tearCutBottom: { position: 'absolute', bottom: -10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#050A14', borderWidth: 1, borderColor: '#132035', zIndex: 2 },
+  tearDotsWrapVertical: { flex: 1, justifyContent: 'space-between', paddingVertical: 18 },
+  tearDotVertical: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#0F1E30' },
+
+  ticketStub: { width: 100, padding: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A121D' },
+  statusBadgeText: { color: '#00E5A0', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  stubValue: { color: '#00C2FF', fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  stubLabel: { color: '#2E4A62', fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginTop: 2 },
+
+  stubProgressTrack: { height: 4, backgroundColor: '#132035', borderRadius: 2, overflow: 'hidden', width: '100%', marginTop: 12 },
+  stubProgressFill: { height: '100%', borderRadius: 2 },
 
   centerContainer: {
     flex: 1,
