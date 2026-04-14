@@ -271,7 +271,7 @@ export default function HistoryScreen({ navigation }) {
                 animationType="slide"
                 onRequestClose={() => setIsQRModalVisible(false)}
             >
-                <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+                <BlurView intensity={1000} tint="dark" style={styles.modalOverlay}>
                     <TouchableOpacity 
                         style={styles.modalDismiss} 
                         activeOpacity={1} 

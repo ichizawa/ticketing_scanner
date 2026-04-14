@@ -38,13 +38,21 @@ const getImageUrl = (path) => {
 };
 
 
-const getStatusConfig = (statusCode) => {
-  switch (statusCode) {
+const getStatusConfig = (status) => {
+  const s = String(status || '').toUpperCase();
+  if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
+  if (s.includes('ONGOING') || s.includes('LIVE')) return { label: 'ONGOING', color: '#FF4D6A' };
+  if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
+  if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
+  if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
+  
+  const code = parseInt(status);
+  switch (code) {
     case 0: return { label: 'UPCOMING', color: '#FFAA00' };
     case 1: return { label: 'ACTIVE', color: '#00E5A0' };
-    case 2: return { label: 'ONGOING', color: '#00C2FF' };
-    case 3: return { label: 'COMPLETED', color: '#4B4B4B' };
-    default: return { label: 'CANCELLED', color: '#FF4D6A' };
+    case 2: return { label: 'ONGOING', color: '#FF4D6A' };
+    case 3: return { label: 'COMPLETED', color: '#4A5568' };
+    default: return { label: s || 'ACTIVE', color: '#00E5A0' };
   }
 };
 
@@ -70,26 +78,20 @@ export default function ManageEventScreen({ navigation }) {
   const getFilteredEvents = () => {
     if (activeTab === 'All Events') return events;
 
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-
     return events.filter(event => {
-
-      // Normalize status and date if needed
       const statusStr = String(event.status || '').toUpperCase();
-      const eventDate = event.event_date;
 
       switch (activeTab) {
         case 'Upcoming':
-          return eventDate > todayStr;
+          return event.status === 0;
         case 'Ongoing':
-          return eventDate === todayStr;
+          return event.status === 2 || statusStr === 'ONGOING';
         case 'Completed':
-          return eventDate < todayStr;
+          return event.status === 3 || statusStr === 'COMPLETED' || statusStr === 'PAST';
         case 'Active':
           return event.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE';
         case 'Cancelled':
-          return event.status === 0 || statusStr === 'CANCELLED';
+          return statusStr === 'CANCELLED';
         default:
           return true;
       }

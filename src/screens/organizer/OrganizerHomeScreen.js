@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState, useCallback } from 'react';
-import { 
-  StyleSheet, Text, View, StatusBar, ScrollView, 
-  TouchableOpacity, RefreshControl, ActivityIndicator, Alert 
+import {
+  StyleSheet, Text, View, StatusBar, ScrollView,
+  TouchableOpacity, RefreshControl, ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
@@ -25,12 +25,12 @@ export default function OrganizerHomeScreen({ navigation }) {
       };
 
       const response = await fetch(`${API_BASE_URL}/staff/events`, { method: 'GET', headers });
-      
+
       if (response.ok) {
         const result = await response.json();
         const eventData = result.data || result.events || result;
         const fetchedEvents = Array.isArray(eventData) ? eventData : [];
-        
+
         setEvents(fetchedEvents);
         setStats({
           activeCount: fetchedEvents.filter(e => e.status === 1 || e.status === '1').length,
@@ -69,7 +69,7 @@ export default function OrganizerHomeScreen({ navigation }) {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Background Decor */}
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
@@ -100,9 +100,9 @@ export default function OrganizerHomeScreen({ navigation }) {
 
           {/* Action Section */}
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          
-          <TouchableOpacity 
-            style={styles.primaryActionCard} 
+
+          <TouchableOpacity
+            style={styles.primaryActionCard}
             onPress={handleScanNavigation}
             activeOpacity={0.7}
           >
