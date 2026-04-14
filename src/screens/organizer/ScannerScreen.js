@@ -115,9 +115,9 @@ export default function ScannerScreen({ navigation }) {
     return {
       status,
       name: data?.customer_name ?? ticketDetails?.customer_name ?? 'Unknown Guest',
-      ticket: data?.type ?? ticketDetails?.type ?? 'Standard Ticket',
+      ticket: data?.type ?? ticketDetails?.type ?? 'Ticket Invalid',
       event: eventDetails?.event_name ?? eventDetails?.event_title ?? 'Event Unspecified',
-      seat: data?.seat ?? ticketDetails?.seat ?? 'General Admission',
+      seat: data?.seat ?? ticketDetails?.seat ?? 'Unknown Seat',
       time: eventDetails?.time ?? data?.time ?? '—',
       id: refNumber,
       scannedAt: status === 'valid' ? currentFormattedTime : (dbFormattedTime ?? currentFormattedTime),
@@ -345,15 +345,15 @@ export default function ScannerScreen({ navigation }) {
 
         <Animated.View style={[styles.statsBar]}>
           {[
-            { value: scanCount, label: 'SCANNED', color: '#FFFFFF' },
             { value: successCount, label: 'VALID', color: '#00E5A0' },
+            { value: scanCount, label: 'SCANNED', color: '#FFFFFF' },
             { value: scanCount - successCount, label: 'REJECTED', color: '#FF4D6A' },
           ].map((s, i) => (
             <React.Fragment key={s.label}>
               {i > 0 && <View style={styles.statDivider} />}
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: s.color }]}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
+              <View style={[styles.statItem, i === 1 && { flex: 2 }]}>
+                <Text style={[styles.statNumber, { color: s.color }, i === 1 && { fontSize: 24, fontWeight: '900' }]}>{s.value}</Text>
+                <Text style={[styles.statLabel, i === 1 && { color: '#4A8AAF', fontSize: 8 }]}>{s.label}</Text>
               </View>
             </React.Fragment>
           ))}
@@ -579,12 +579,12 @@ const styles = StyleSheet.create({
   statsBar: {
     flexDirection: 'row', marginHorizontal: 20, marginBottom: 16,
     backgroundColor: '#0B1623', borderRadius: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: '#132035',
+    borderWidth: 1, borderColor: '#00C2FF',
   },
   statItem: { flex: 1, alignItems: 'center' },
   statNumber: { fontSize: 20, fontWeight: '700', letterSpacing: -0.5 },
   statLabel: { color: '#2E4A62', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: '#132035', marginVertical: 6 },
+  statDivider: { width: 1, backgroundColor: '#00C2FF', marginVertical: 6 },
 
   // Scanner
   scannerArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
