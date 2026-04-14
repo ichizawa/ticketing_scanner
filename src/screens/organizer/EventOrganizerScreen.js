@@ -25,13 +25,21 @@ const formatTime = (time) => {
     }
 };
 
-const getStatusConfig = (statusCode) => {
-    switch (statusCode) {
+const getStatusConfig = (status) => {
+    const s = String(status || '').toUpperCase();
+    if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
+    if (s.includes('ONGOING') || s.includes('LIVE')) return { label: 'ONGOING', color: '#FF4D6A' };
+    if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
+    if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
+    if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
+    
+    const code = parseInt(status);
+    switch (code) {
         case 0: return { label: 'UPCOMING', color: '#FFAA00' };
         case 1: return { label: 'ACTIVE', color: '#00E5A0' };
-        case 2: return { label: 'ONGOING', color: '#00C2FF' };
-        case 3: return { label: 'COMPLETED', color: '#4B4B4B' };
-        default: return { label: 'CANCELLED', color: '#FF4D6A' };
+        case 2: return { label: 'ONGOING', color: '#FF4D6A' };
+        case 3: return { label: 'COMPLETED', color: '#4A5568' };
+        default: return { label: s || 'ACTIVE', color: '#00E5A0' };
     }
 };
 

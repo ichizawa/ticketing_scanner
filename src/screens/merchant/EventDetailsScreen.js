@@ -23,11 +23,22 @@ const formatTime = (time) => {
   }
 };
 
-const getStatusColor = (status) => {
+const getStatusConfig = (status) => {
   const s = String(status || '').toUpperCase();
-  if (s === 'LIVE' || s === 'ACTIVE' || s === 'ON LIVE') return '#00E5A0';
-  if (s === 'COMPLETED' || s === 'DONE LIVE' || s === 'PAST') return '#3D6080';
-  return '#00C2FF';
+  if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
+  if (s.includes('ONGOING') || s.includes('LIVE')) return { label: 'ONGOING', color: '#FF4D6A' };
+  if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
+  if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
+  if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
+  
+  const code = parseInt(status);
+  switch (code) {
+    case 0: return { label: 'UPCOMING', color: '#FFAA00' };
+    case 1: return { label: 'ACTIVE', color: '#00E5A0' };
+    case 2: return { label: 'ONGOING', color: '#FF4D6A' };
+    case 3: return { label: 'COMPLETED', color: '#4A5568' };
+    default: return { label: s || 'ACTIVE', color: '#00E5A0' };
+  }
 };
 
 const getTierColor = (type, name) => {
@@ -61,8 +72,8 @@ export default function EventDetailsScreen({ route, navigation }) {
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [expandedArtist, setExpandedArtist] = useState(null);
 
-  const statusStr = String(event.status || '').toUpperCase();
-  const statusColor = getStatusColor(statusStr);
+  const statusConfig = getStatusConfig(event.status);
+  const statusColor = statusConfig.color;
 
   const dynamicTotal    = tickets.reduce((s, t) => s + (parseInt(t.original_qty) || parseInt(t.quantity) || 0), 0);
   const dynamicRemaining = tickets.reduce((s, t) => s + (parseInt(t.quantity) || 0), 0);
@@ -417,7 +428,7 @@ const styles = StyleSheet.create({
   // Empty / loading
   loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
   loadingText: { fontSize: 14, fontWeight: '600' },
-  emptyText:   { color: '#4A8AAF', fontSize: 14 },
+  emptyText:   { color: '#A0AEC0', fontSize: 14 },
 
   // Lineup horizontal scroll
   artistList:   { paddingHorizontal: 15 },

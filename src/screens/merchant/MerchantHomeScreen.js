@@ -145,6 +145,24 @@ export default function MerchantHomeScreen({ navigation }) {
     }
   };
 
+  const getStatusConfig = (status) => {
+    const s = String(status || '').toUpperCase();
+    if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
+    if (s.includes('ONGOING') || s.includes('LIVE')) return { label: 'ONGOING', color: '#FF4D6A' };
+    if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
+    if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
+    if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
+    
+    const code = parseInt(status);
+    switch (code) {
+      case 0: return { label: 'UPCOMING', color: '#FFAA00' };
+      case 1: return { label: 'ACTIVE', color: '#00E5A0' };
+      case 2: return { label: 'ONGOING', color: '#FF4D6A' };
+      case 3: return { label: 'COMPLETED', color: '#4A5568' };
+      default: return { label: s || 'ACTIVE', color: '#00E5A0' };
+    }
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
@@ -275,10 +293,15 @@ export default function MerchantHomeScreen({ navigation }) {
                         <Image source={{ uri: event.event_image_url }} style={styles.ticketThumb} />
                         <View style={styles.ticketHeaderInfo}>
                           <View style={styles.ticketTagsRow}>
-                            <View style={styles.statusBadgeMain}>
-                               <View style={styles.statusBadgeDot} />
-                               <Text style={styles.statusBadgeText}>ACTIVE</Text>
-                              </View>
+                            {(() => {
+                              const config = getStatusConfig(event.status);
+                              return (
+                                <View style={[styles.statusBadgeMain, { backgroundColor: config.color + '15', borderColor: config.color + '30' }]}>
+                                  <View style={[styles.statusBadgeDot, { backgroundColor: config.color }]} />
+                                  <Text style={[styles.statusBadgeText, { color: config.color }]}>{config.label}</Text>
+                                </View>
+                              );
+                            })()}
                             <View style={styles.categoryBadge}>
                                <Text style={styles.categoryText} numberOfLines={1}>{event.category}</Text>
                             </View>
@@ -399,7 +422,7 @@ const styles = StyleSheet.create({
   ticketHeaderInfo: { flex: 1, paddingRight: 4 },
   
   ticketTagsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 },
-  statusBadgeMain: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0, 229, 160, 0.1)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(0, 229, 160, 0.2)' },
+  statusBadgeMain: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1 },
   categoryBadge: { flexShrink: 1, backgroundColor: 'rgba(255, 215, 0, 0.1)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.2)' },
   categoryText: { color: '#FFD700', fontSize: 7, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
 
@@ -414,8 +437,8 @@ const styles = StyleSheet.create({
   tearDotVertical: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#0F1E30' },
 
   ticketStub: { width: 90, padding: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A121D' },
-  statusBadgeDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#00E5A0', marginRight: 4 },
-  statusBadgeText: { color: '#00E5A0', fontSize: 8, fontWeight: '800', letterSpacing: 1 },
+  statusBadgeDot: { width: 4, height: 4, borderRadius: 2, marginRight: 4 },
+  statusBadgeText: { fontSize: 8, fontWeight: '800', letterSpacing: 1 },
   stubData: { alignItems: 'center' },
   stubValue: { color: '#00C2FF', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
   stubLabel: { color: '#2E4A62', fontSize: 8, fontWeight: '800', letterSpacing: 1.5, marginTop: 1 },

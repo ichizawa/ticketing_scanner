@@ -40,7 +40,8 @@ const getTodayStr = () => new Date().toISOString().split('T')[0];
 const isActive = (e) =>
   e.status === 1 || e.status === '1' ||
   String(e.status).toUpperCase() === 'ACTIVE' ||
-  String(e.status).toUpperCase() === 'LIVE';
+  String(e.status).toUpperCase() === 'LIVE' ||
+  String(e.category).toUpperCase() === 'ONGOING';
 
 const isCompleted = (e) =>
   e.status === 2 || e.status === '2' ||
@@ -133,7 +134,7 @@ export default function ExploreEventsScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const imgUrl = item.event_image_url || getImageUrl(item.event_image);
-    const live = isActive(item) && String(item.status).toUpperCase() !== 'UPCOMING';
+    const live = String(item.category).toLowerCase() === 'ongoing';
 
     return (
       <TouchableOpacity

@@ -255,7 +255,7 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                                                 </Text>
                                             </View>
                                         </View>
-                                        <Text style={[styles.passType, { color: tierColor !== '#132035' ? tierColor : '#7E97B3' }]}>{tier.type || 'ADMISSION ENTRY'}</Text>
+                                        <Text style={[styles.passType, { color: tierColor !== '#132035' ? tierColor : '#7E97B3' }]}>{tier.type}</Text>
                                         
                                         <View style={styles.passInclusionsRow}>
                                             <Foundation name="check" size={12} color="#4A8AAF" style={{ marginTop: 2 }} />

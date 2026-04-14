@@ -1,13 +1,14 @@
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, Alert } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, StatusBar, ScrollView, Animated, ActivityIndicator, RefreshControl, Alert, Image } from 'react-native'
 import React, { useRef, useEffect, useState, useContext } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import NetInfo from '@react-native-community/netinfo'
+import { Foundation, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { AuthContext } from '../../context/AuthContext'
 import Header from '../../components/Header'
 import { API_BASE_URL } from '../../config'; 
 
 
-const { width } = Dimensions.get('window')
+const { width, height } = Dimensions.get('window')
 
 const formatTime = (time) => {
   if (!time) return 'TBA'
@@ -24,25 +25,33 @@ const formatTime = (time) => {
   }
 }
 
-const getStatusConfig = (statusCode) => {
-  switch (statusCode) {
-    case 0: return { label: 'UPCOMING', color: '#FFAA00' }
-    case 1: return { label: 'ACTIVE', color: '#00E5A0' }
-    case 2: return { label: 'ONGOING', color: '#00C2FF' }
-    case 3: return { label: 'COMPLETED', color: '#4B4B4B' }
-    default: return { label: 'CANCELLED', color: '#FF4D6A' }
+const getStatusConfig = (status) => {
+  const s = String(status || '').toUpperCase();
+  if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
+  if (s.includes('ONGOING') || s.includes('LIVE')) return { label: 'ONGOING', color: '#FF4D6A' };
+  if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
+  if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
+  if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
+  
+  const code = parseInt(status);
+  switch (code) {
+    case 0: return { label: 'UPCOMING', color: '#FFAA00' };
+    case 1: return { label: 'ACTIVE', color: '#00E5A0' };
+    case 2: return { label: 'ONGOING', color: '#FF4D6A' };
+    case 3: return { label: 'COMPLETED', color: '#4A5568' };
+    default: return { label: s || 'ACTIVE', color: '#00E5A0' };
   }
-}
+};
 
 const transformEvent = (apiEvent) => {
   const statusConfig = getStatusConfig(apiEvent.status)
-  const statusStr = String(apiEvent.status || '').toUpperCase()
 
   return {
     id: apiEvent.id?.toString() || Math.random().toString(),
     name: apiEvent.event_name || 'Unnamed Event',
     venue: apiEvent.event_venue || 'TBA',
-    date: `${apiEvent.event_date || 'TBA'} • ${formatTime(apiEvent.event_time)}`,
+    date: apiEvent.event_date || 'TBA',
+    time: formatTime(apiEvent.event_time),
     status: statusConfig.label,
     statusColor: statusConfig.color,
     accentColor: statusConfig.color,
@@ -50,6 +59,8 @@ const transformEvent = (apiEvent) => {
     totalCheckedIn: 0, 
     totalCapacity: 0,  
     categories: [],    
+    image: apiEvent.event_image_url || null,
+    category: apiEvent.category || null,
   }
 }
 
@@ -66,7 +77,24 @@ function EventSelectionView({ onSelect, navigation }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('All Events')
+  const TABS = ['All Events', 'Upcoming', 'Ongoing', 'Completed', 'Active', 'Cancelled']
   const [isConnected, setIsConnected] = useState(true)
+
+  const getFilteredEvents = () => {
+    if (activeTab === 'All Events') return events;
+    return events.filter(event => {
+      const statusStr = String(event.status || '').toUpperCase();
+      switch (activeTab) {
+        case 'Upcoming': return event.statusCode === 0 || statusStr === 'UPCOMING';
+        case 'Ongoing':  return event.statusCode === 2 || statusStr === 'ONGOING';
+        case 'Completed':return event.statusCode === 3 || statusStr === 'COMPLETED' || statusStr === 'PAST';
+        case 'Active':   return event.statusCode === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE';
+        case 'Cancelled':return statusStr === 'CANCELLED';
+        default: return true;
+      }
+    });
+  };
 
   const pulseAnim = useRef(new Animated.Value(1)).current
 
@@ -168,10 +196,10 @@ function EventSelectionView({ onSelect, navigation }) {
                   ticketTypes[typeName] = {
                     id: Object.keys(ticketTypes).length + 1,
                     name: typeName,
+                    inclusions: ticket.inclusions,
                     checkedIn: 0, 
                     capacity: 0,
                     color: typeName.toUpperCase().includes('VIP') ? '#FFAA00' : '#00C2FF', 
-                    icon: '🎫'
                   }
                 }
                 ticketTypes[typeName].capacity += parseInt(ticket.original_qty) || 0
@@ -195,7 +223,6 @@ function EventSelectionView({ onSelect, navigation }) {
                     checkedIn: scanned.count,
                     capacity: 0, 
                     color: '#00E5A0',
-                    icon: '🎫'
                   }
                 }
               })
@@ -292,27 +319,43 @@ function EventSelectionView({ onSelect, navigation }) {
 
           {!isConnected && (
             <View style={styles.offlineBanner}>
-              <Text style={styles.offlineBannerTitle}>OFFLINE</Text>
-              <Text style={styles.offlineBannerText}>Connect to the internet to get live attendance updates.</Text>
+              <Ionicons name="cloud-offline" size={16} color="#FFD5DB" />
+              <View style={styles.offlineTextContainer}>
+                <Text style={styles.offlineBannerTitle}>OFFLINE</Text>
+                <Text style={styles.offlineBannerText}>Connect to the internet to get live attendance updates.</Text>
+              </View>
             </View>
           )}
 
           <View style={styles.searchBar}>
-            <Text style={styles.searchIconChar}>⌕</Text>
+            <Ionicons name="search" size={18} color="#3D6080" />
             <Text style={styles.searchPlaceholder}>Search events…</Text>
           </View>
 
-          {/* Filter chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
-            {['ALL', 'LIVE', 'UPCOMING', 'PAST'].map((f, i) => (
-              <View key={f} style={[styles.chip, i === 0 && styles.chipActive]}>
-                <Text style={[styles.chipText, i === 0 && styles.chipTextActive]}>{f}</Text>
-              </View>
-            ))}
-          </ScrollView>
+          {/* Standardized Merchant Tabs */}
+          <View style={styles.tabsWrapper}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.tabsScroll}
+            >
+              {TABS.map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setActiveTab(tab)}
+                  style={[styles.tabItem, activeTab === tab && styles.activeTabItem]}
+                >
+                  <Text style={[styles.tabTextUI, activeTab === tab && styles.activeTabTextUI]}>
+                    {tab}
+                  </Text>
+                  {activeTab === tab && <View style={styles.activeIndicator} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* Event cards */}
-          {events.map((ev) => {
+          {getFilteredEvents().map((ev) => {
             const pct = ev.totalCapacity > 0
               ? Math.round((ev.totalCheckedIn / ev.totalCapacity) * 100) : 0
             const isLive = ev.status === 'ACTIVE' || ev.status === 'ONGOING'
@@ -326,54 +369,69 @@ function EventSelectionView({ onSelect, navigation }) {
               >
                 {/* Top row */}
                 <View style={styles.eventCardTop}>
-                  <View style={[styles.statusPill, { backgroundColor: ev.statusColor + '18' }]}>
-                    {isLive && <View style={[styles.statusDot, { backgroundColor: ev.statusColor }]} />}
+                  <View style={[styles.statusPill, { backgroundColor: ev.statusColor + '15', borderColor: ev.statusColor + '30', borderWidth: 1 }]}>
+                    <View style={[styles.statusDot, { backgroundColor: ev.statusColor }]} />
                     <Text style={[styles.statusText, { color: ev.statusColor }]}>{ev.status}</Text>
                   </View>
                   <View style={[
-                    styles.pctBadge,
-                    { backgroundColor: ev.accentColor + '18', borderColor: ev.accentColor + '33' },
+                    styles.accentTag,
+                    { backgroundColor: 'rgba(5, 10, 20, 0.6)', borderColor: ev.accentColor + '40' }
                   ]}>
-                    <Text style={[styles.pctBadgeText, { color: ev.accentColor }]}>
+                    <Text style={[styles.accentTagText, { color: ev.accentColor }]}>
                       {pct}% CHECKED IN
                     </Text>
                   </View>
                 </View>
 
                 {/* Info */}
-                <Text style={styles.eventCardName}>{ev.name}</Text>
-                <Text style={styles.eventCardVenue}>{ev.venue}</Text>
-                <Text style={[styles.eventCardDate, { color: ev.accentColor }]}>{ev.date}</Text>
-
-                {/* Counts */}
-                <View style={styles.eventCardCounts}>
-                  <Text style={styles.countHighlight}>{ev.totalCheckedIn.toLocaleString()}</Text>
-                  <Text style={styles.countMuted}> / {ev.totalCapacity.toLocaleString()} checked in</Text>
-                </View>
-
-                {/* Mini progress */}
-                <View style={styles.miniProgressTrack}>
-                  <View style={[styles.miniProgressFill, { width: `${pct}%`, backgroundColor: ev.accentColor }]} />
-                </View>
-
-                {/* Category pills */}
-                <View style={styles.catPillRow}>
-                  {ev.categories.slice(0, 3).map((c) => (
-                    <View key={c.id} style={[styles.catPill, { backgroundColor: c.color + '18' }]}>
-                      <Text style={styles.catPillText}>{c.icon} {c.name}</Text>
+                <View style={styles.cardInfoSection}>
+                  <Text style={styles.eventCardName} numberOfLines={1}>{ev.name}</Text>
+                  
+                  <View style={[styles.metaRow, { flexWrap: 'wrap' }]}>
+                    <View style={styles.metaItem}>
+                      <Foundation name="marker" size={11} color="#00C2FF" />
+                      <Text style={styles.eventCardVenue} numberOfLines={1}>{ev.venue}</Text>
                     </View>
-                  ))}
-                  {ev.categories.length > 3 && (
-                    <View style={[styles.catPill, { backgroundColor: '#4A8AAF18' }]}>
-                      <Text style={styles.catPillText}>+{ev.categories.length - 3} more</Text>
+                    <View style={styles.metaItem}>
+                      <Foundation name="calendar" size={11} color="#00C2FF" />
+                      <Text style={styles.eventCardDate}>{ev.date}</Text>
                     </View>
-                  )}
+                    <View style={styles.metaItem}>
+                      <Foundation name="clock" size={11} color="#00C2FF" />
+                      <Text style={styles.eventCardDate}>{ev.time}</Text>
+                    </View>
+                  </View>
+
+                  {/* Counts */}
+                  <View style={styles.countRow}>
+                    <Text style={styles.countHighlight}>{ev.totalCheckedIn.toLocaleString()}</Text>
+                    <Text style={styles.countMuted}>/ {ev.totalCapacity.toLocaleString()} ATTENDEES</Text>
+                  </View>
+
+                  {/* Mini progress */}
+                  <View style={styles.miniProgressTrack}>
+                    <View style={[styles.miniProgressFill, { width: `${pct}%`, backgroundColor: ev.accentColor }]} />
+                  </View>
+
+                  {/* Category pills */}
+                  <View style={styles.catPillRow}>
+                    {ev.categories.slice(0, 3).map((c) => (
+                      <View key={c.id} style={[styles.catPill, { backgroundColor: c.color + '15', borderColor: c.color + '30', borderWidth: 1 }]}>
+                        <Text style={[styles.catPillText, { color: c.color }]}>{c.name}</Text>
+                      </View>
+                    ))}
+                    {ev.categories.length > 3 && (
+                      <View style={[styles.catPill, { backgroundColor: '#132035' }]}>
+                        <Text style={styles.catPillText}>+{ev.categories.length - 3} MORE</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
 
                 {/* Footer */}
-                <View style={[styles.cardFooter, { borderTopColor: isLive ? ev.accentColor + '22' : '#0F1E30' }]}>
+                <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
                   <Text style={[styles.cardFooterText, { color: ev.accentColor }]}>
-                    VIEW ATTENDANCE REPORT  ›
+                    VIEW ATTENDANCE REPORT ›
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -423,19 +481,47 @@ function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
+          {/* Edge-to-Edge Event Banner */}
+          <View style={styles.banner}>
+            <Image source={{ uri: event.image || 'https://via.placeholder.com/600x400' }} style={styles.bannerImage} />
+            <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(5, 10, 20, 0.7)' }]} />
+            <View style={styles.bannerContent}>
+              {event.category && (
+                <View style={styles.categoryTag}>
+                  <Text style={styles.categoryTagText}>{(event.category).toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.eventTitle}>{event.name}</Text>
+              <View style={styles.heroMetaRow}>
+                <View style={styles.heroMetaItem}>
+                  <Foundation name="marker" size={13} color="#00C2FF" />
+                  <Text style={styles.heroMetaText} numberOfLines={1}>{event.venue}</Text>
+                </View>
+                <View style={styles.heroMetaItem}>
+                  <Foundation name="calendar" size={13} color="#00C2FF" />
+                  <Text style={styles.heroMetaText}>{event.date}</Text>
+                </View>
+                <View style={styles.heroMetaItem}>
+                  <Foundation name="clock" size={13} color="#00C2FF" />
+                  <Text style={styles.heroMetaText}>{event.time}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
           {/* Main Counter Card */}
           <View style={[styles.mainCard, { shadowColor: event.accentColor }]}>
             <View style={styles.mainHeader}>
               <View>
-                <Text style={styles.mainLabel}>TOTAL CHECKED-IN</Text>
+                <Text style={styles.mainLabel}>LIVE ATTENDANCE</Text>
                 <Text style={styles.mainCount}>
                   {event.totalCheckedIn.toLocaleString()}
                   <Text style={styles.mainCapacity}> / {event.totalCapacity.toLocaleString()}</Text>
                 </Text>
               </View>
-              <View style={[styles.liveIndicator, { backgroundColor: event.statusColor + '18' }]}>
-                <View style={[styles.liveDot, { backgroundColor: event.statusColor }]} />
-                <Text style={[styles.liveText, { color: event.statusColor }]}>{event.status}</Text>
+              <View style={[styles.statusPill, { backgroundColor: event.statusColor + '15', borderColor: event.statusColor + '30', borderWidth: 1 }]}>
+                <View style={[styles.statusDot, { backgroundColor: event.statusColor }]} />
+                <Text style={[styles.statusText, { color: event.statusColor }]}>{event.status}</Text>
               </View>
             </View>
 
@@ -450,48 +536,61 @@ function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
             </View>
 
             <View style={styles.percentRow}>
-              <Text style={styles.percentText}>{overallPct}% Capacity Reached</Text>
+              <Text style={styles.percentText}>{overallPct}% CAPACITY REACHED</Text>
               <Text style={styles.remainingText}>
-                {(event.totalCapacity - event.totalCheckedIn).toLocaleString()} Remaining
+                {(event.totalCapacity - event.totalCheckedIn).toLocaleString()} REMAINING
               </Text>
             </View>
           </View>
 
-          {/* Venue & Date strip */}
-          <View style={styles.eventMetaStrip}>
-            <Text style={styles.eventMetaVenue}>📍 {event.venue}</Text>
-            <Text style={[styles.eventMetaDate, { color: event.accentColor }]}>{event.date}</Text>
-          </View>
 
-          <Text style={styles.sectionTitle}>Ticket Categories</Text>
+          <Text style={styles.sectionTitle}>Ticket Tiers</Text>
 
-          {/* Category Cards */}
+          {/* Ticket Tiers */}
           {event.categories.map((cat) => {
             const percent = cat.capacity > 0
               ? (cat.checkedIn / cat.capacity) * 100 : 0
+            
+            const inclusionsText = cat.inclusions || 'Access to general admission area';
+
             return (
-              <View key={cat.id} style={styles.catCard}>
-                <View style={styles.catInfo}>
-                  <View style={[styles.catIconBox, { backgroundColor: cat.color + '20' }]}>
-                    <Text style={styles.catIcon}>{cat.icon}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.catName}>{cat.name}</Text>
-                    <Text style={styles.catMeta}>
-                      {cat.checkedIn} checked in out of {cat.capacity}
+              <View key={cat.id} style={[styles.passCard, { borderColor: cat.color }]}>
+                {/* Boarding Pass Top */}
+                <View style={styles.passTop}>
+                  <View style={styles.passHeader}>
+                    <Text style={styles.passTitle}>{cat.name.toUpperCase()}</Text>
+                    <Text style={[styles.catPercent, { color: cat.color }]}>
+                      {Math.round(percent)}%
                     </Text>
                   </View>
-                  <Text style={[styles.catPercent, { color: cat.color }]}>
-                    {Math.round(percent)}%
+                  <Text style={[styles.passType, { color: cat.color !== '#132035' ? cat.color : '#7E97B3' }]}>
+                    {cat.checkedIn.toLocaleString()} CHECKED IN OF {cat.capacity.toLocaleString()}
                   </Text>
+
+                  {/* Inclusions List */}
+                  <View style={styles.passInclusionsRow}>
+                    <Foundation name="check" size={12} color="#4A8AAF" style={{ marginTop: 2 }} />
+                    <Text style={styles.passInclusionsText}>{inclusionsText}</Text>
+                  </View>
                 </View>
-                <View style={styles.catProgressBg}>
-                  <View
-                    style={[
-                      styles.catProgressBar,
-                      { width: `${percent}%`, backgroundColor: cat.color },
-                    ]}
-                  />
+
+                {/* Perforation Divider */}
+                <View style={styles.passDividerRow}>
+                  <View style={[styles.notchLeft, { borderColor: cat.color }]} />
+                  <View style={styles.dashedLine} />
+                  <View style={[styles.notchRight, { borderColor: cat.color }]} />
+                </View>
+
+                {/* Boarding Pass Bottom (Analytics) */}
+                <View style={styles.passBottom}>
+                  <View style={styles.catProgressBg}>
+                    <View
+                      style={[
+                        styles.catProgressBar,
+                        { width: `${percent}%`, backgroundColor: cat.color },
+                      ]}
+                    />
+                  </View>
                 </View>
               </View>
             )
@@ -499,7 +598,8 @@ function AttendanceReportView({ event, onBack, handleLogout, navigation }) {
 
           {/* Switch event pill */}
           <TouchableOpacity style={styles.switchBtn} onPress={onBack}>
-            <Text style={styles.switchBtnText}>⇄  SWITCH EVENT</Text>
+            <Ionicons name="swap-horizontal" size={16} color="#00C2FF" />
+            <Text style={styles.switchBtnText}>SWITCH EVENT</Text>
           </TouchableOpacity>
 
           <View style={{ height: 40 }} />
@@ -546,26 +646,24 @@ export default function AttendeeTrackScreen({ navigation }) {
       navigation={navigation}
     />
   )
-}
-
-const styles = StyleSheet.create({
+}const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#050A14' },
 
   bgOrb1: {
-    position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: '#00C2FF', top: -50, right: -50, opacity: 0.05,
+    position: 'absolute', width: 350, height: 350, borderRadius: 175,
+    backgroundColor: '#00C2FF', top: -100, right: -150, opacity: 0.04,
   },
   bgOrb2: {
-    position: 'absolute', width: 200, height: 200, borderRadius: 100,
-    backgroundColor: '#FF4D6A', bottom: 100, left: -50, opacity: 0.05,
+    position: 'absolute', width: 250, height: 250, borderRadius: 125,
+    backgroundColor: '#FF4D6A', bottom: -50, left: -100, opacity: 0.02,
   },
 
   safeArea:      { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 10 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
 
-  pageHeadRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  pageHeadTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', letterSpacing: 0.5, marginBottom: 4 },
-  pageHeadSub:   { color: '#3D6080', fontSize: 13, fontWeight: '500' },
+  pageHeadRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 24 },
+  pageHeadTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '800' },
+  pageHeadSub:   { color: '#4A8AAF', fontSize: 13, fontWeight: '500' },
   pulseOrb: {
     width: 10, height: 10, borderRadius: 5, backgroundColor: '#00E5A0',
     shadowColor: '#00E5A0', shadowOpacity: 0.9, shadowRadius: 8, elevation: 6,
@@ -574,16 +672,48 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B1623',
     borderRadius: 14, borderWidth: 1, borderColor: '#132035',
-    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14, gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10, gap: 12,
   },
-  searchIconChar:    { color: '#3D6080', fontSize: 18 },
-  searchPlaceholder: { color: '#1E3A50', fontSize: 14, fontWeight: '500' },
+  searchPlaceholder: { color: '#4A8AAF', fontSize: 13, fontWeight: '600' },
 
-  chipsRow:       { marginBottom: 20 },
-  chip:           { borderRadius: 20, borderWidth: 1, borderColor: '#132035', paddingHorizontal: 16, paddingVertical: 7, marginRight: 8, backgroundColor: '#0B1623' },
-  chipActive:     { backgroundColor: '#00C2FF', borderColor: '#00C2FF' },
-  chipText:       { color: '#3D6080', fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
-  chipTextActive: { color: '#050A14' },
+  tabsWrapper: {
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  tabsScroll: {
+    gap: 20,
+    paddingBottom: 10,
+  },
+  tabItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTabItem: {},
+  tabTextUI: {
+    color: '#4A8AAF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  activeTabTextUI: {
+    color: '#00C2FF',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    width: '100%',
+    height: 3,
+    backgroundColor: '#00C2FF',
+    borderRadius: 2,
+    shadowColor: '#00C2FF',
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 
   eventCard: {
     backgroundColor: '#0B1623', borderRadius: 20, borderWidth: 1,
@@ -593,83 +723,106 @@ const styles = StyleSheet.create({
   },
   eventCardTop: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 16, paddingBottom: 10,
+    alignItems: 'center', padding: 14, paddingBottom: 10,
   },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusDot:  { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
-  pctBadge:   { borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  pctBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 3 },
+  statusDot:  { width: 4, height: 4, borderRadius: 2 },
+  statusText: { fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  
+  accentTag: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  accentTagText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
 
-  eventCardName:     { color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16, marginBottom: 3, letterSpacing: -0.3 },
-  eventCardVenue:    { color: '#3D6080', fontSize: 12, fontWeight: '500', paddingHorizontal: 16, marginBottom: 2 },
-  eventCardDate:     { fontSize: 12, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12, letterSpacing: 0.3 },
+  cardInfoSection:   { paddingHorizontal: 14, paddingBottom: 14 },
+  eventCardName:     { color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginBottom: 8, letterSpacing: -0.3 },
+  metaRow:           { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  metaItem:          { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  eventCardVenue:    { color: '#7E97B3', fontSize: 10, fontWeight: '600' },
+  eventCardDate:     { color: '#7E97B3', fontSize: 10, fontWeight: '600' },
 
-  eventCardCounts: { flexDirection: 'row', alignItems: 'baseline', paddingHorizontal: 16, marginBottom: 10 },
-  countHighlight:  { color: '#FFFFFF', fontSize: 22, fontWeight: '800' },
-  countMuted:      { color: '#3D6080', fontSize: 13, fontWeight: '500' },
+  countRow:        { flexDirection: 'row', alignItems: 'baseline', marginTop: 12, marginBottom: 8, gap: 6 },
+  countHighlight:  { color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
+  countMuted:      { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
 
-  miniProgressTrack: { height: 5, backgroundColor: '#0F1E30', borderRadius: 3, marginHorizontal: 16, overflow: 'hidden', marginBottom: 14 },
+  miniProgressTrack: { height: 6, backgroundColor: '#0F1E30', borderRadius: 3, overflow: 'hidden', marginBottom: 12 },
   miniProgressFill:  { height: '100%', borderRadius: 3 },
 
-  catPillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, marginBottom: 0 },
-  catPill:    { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  catPillText:{ color: '#FFFFFF', fontSize: 10, fontWeight: '600', opacity: 0.8 },
+  catPillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  catPill:    { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  catPillText:{ color: '#FFFFFF', fontSize: 8, fontWeight: '800', letterSpacing: 0.5 },
 
-  cardFooter:     { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 14 },
-  cardFooterText: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
+  cardFooter:     { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'flex-end' },
+  cardFooterText: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
 
   mainCard: {
     backgroundColor: '#0B1623', borderRadius: 24, padding: 24,
-    borderWidth: 1, borderColor: '#132035', marginBottom: 16,
-    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
+    borderWidth: 1, borderColor: '#132035', marginBottom: 20,
+    elevation: 10, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }
   },
   mainHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   mainLabel:    { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   mainCount:    { color: '#FFFFFF', fontSize: 40, fontWeight: '800', marginTop: 4 },
   mainCapacity: { color: '#3D6080', fontSize: 20, fontWeight: '600' },
 
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 6 },
-  liveDot:       { width: 6, height: 6, borderRadius: 3 },
-  liveText:      { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-
   progressContainer: { height: 12, backgroundColor: '#132035', borderRadius: 6, overflow: 'hidden', marginVertical: 12 },
   progressBar:       { height: '100%', borderRadius: 6 },
   progressGlow:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.1 },
 
   percentRow:     { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  percentText:    { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  remainingText:  { color: '#3D6080', fontSize: 12, fontWeight: '600' },
+  percentText:    { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  remainingText:  { color: '#3D6080', fontSize: 11, fontWeight: '800' },
 
-  eventMetaStrip: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#0B1623', borderRadius: 14, borderWidth: 1, borderColor: '#132035',
-    paddingHorizontal: 16, paddingVertical: 12, marginBottom: 24,
-  },
-  eventMetaVenue: { color: '#3D6080', fontSize: 12, fontWeight: '600' },
-  eventMetaDate:  { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
+  // Event Banner
+  banner: { height: height * 0.28, marginHorizontal: -20, marginBottom: 20, position: 'relative' },
+  bannerImage: { width: '100%', height: '100%' },
+  bannerOverlay: { ...StyleSheet.absoluteFillObject },
+  bannerContent: { position: 'absolute', bottom: 20, left: 20, right: 20 },
+  categoryTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+  categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  eventTitle: { color: '#FFF', fontSize: 26, fontWeight: '900', marginBottom: 12 },
+  heroMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
+  heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  heroMetaText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
 
-  sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginBottom: 20, paddingLeft: 4 },
+  sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginBottom: 20 },
 
   catCard: {
-    backgroundColor: '#0B1623', borderRadius: 20, padding: 16,
+    backgroundColor: '#0B1623', borderRadius: 20, padding: 20,
     borderWidth: 1, borderColor: '#132035', marginBottom: 16,
   },
   catInfo:    { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  catIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  catIcon:    { fontSize: 20 },
-  catName:    { color: '#FFFFFF', fontSize: 15, fontWeight: '700', marginBottom: 2 },
-  catMeta:    { color: '#3D6080', fontSize: 11, fontWeight: '500' },
-  catPercent: { fontSize: 18, fontWeight: '800' },
+  catIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  catName:    { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginBottom: 2 },
+  catMeta:    { color: '#2E4A62', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  catPercent: { fontSize: 20, fontWeight: '900' },
+
+  // Modern Boarding Pass Style (Clean/Minimal)
+  passCard: {
+    marginHorizontal: 0, backgroundColor: 'rgba(11, 22, 35, 0.5)', borderRadius: 16, marginBottom: 16, 
+    borderWidth: 1.5, borderColor: '#132035', overflow: 'hidden'
+  },
+  passTop: { padding: 16, paddingBottom: 14 },
+  passHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  passTitle: { flexShrink: 1, color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  passType: { fontSize: 11, fontWeight: '700', marginBottom: 12 },
+  
+  passInclusionsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  passInclusionsText: { flex: 1, color: '#A0AEC0', fontSize: 11, lineHeight: 16 },
+
+  passDividerRow: { flexDirection: 'row', alignItems: 'center', height: 16, position: 'relative', marginVertical: 4 },
+  notchLeft: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#050A14', position: 'absolute', left: -9, zIndex: 2, borderWidth: 1, borderColor: '#132035' },
+  notchRight: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#050A14', position: 'absolute', right: -9, zIndex: 2, borderWidth: 1, borderColor: '#132035' },
+  dashedLine: { flex: 1, height: 1, marginHorizontal: 16, borderTopWidth: 1, borderColor: '#1A2A44', borderStyle: 'dashed' },
+
+  passBottom: { paddingHorizontal: 16, paddingVertical: 12 },
 
   catProgressBg:  { height: 6, backgroundColor: '#132035', borderRadius: 3, overflow: 'hidden' },
   catProgressBar: { height: '100%', borderRadius: 3 },
 
   switchBtn: {
-    alignSelf: 'center', borderRadius: 20, borderWidth: 1, borderColor: '#132035',
-    paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#0B1623', marginTop: 4,
+    flexDirection: 'row', gap: 10, alignSelf: 'center', borderRadius: 20, borderWidth: 1, borderColor: '#132035',
+    paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#0B1623', marginTop: 20, alignItems: 'center'
   },
-  switchBtnText: { color: '#3D6080', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  switchBtnText: { color: '#00C2FF', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
 
   centerContainer: {
     flex: 1,
@@ -677,13 +830,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#4A8AAF',
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: '#4A8AAF', marginTop: 15, fontSize: 12, fontWeight: '600' },
   errorText: {
     fontSize: 14,
     color: '#FF4D6A',
@@ -691,13 +839,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
-  noDataText: {
-    fontSize: 14,
-    color: '#4A8AAF',
-    textAlign: 'center',
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
+  noDataText: { color: '#4A8AAF', fontSize: 14 },
   retryBtn: {
     borderRadius: 20,
     borderWidth: 1,
@@ -709,24 +851,11 @@ const styles = StyleSheet.create({
   retryText: { color: '#4A8AAF', fontSize: 12, fontWeight: '800' },
 
   offlineBanner: {
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#3B1118',
-    borderWidth: 1,
-    borderColor: '#6D2430',
+    flexDirection: 'row', alignItems: 'center', marginHorizontal: 20,
+    marginBottom: 20, paddingHorizontal: 16, paddingVertical: 12,
+    borderRadius: 12, backgroundColor: '#3B1118', borderWidth: 1, borderColor: '#6D2430',
   },
-  offlineBannerTitle: {
-    color: '#FFD5DB',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 2,
-  },
-  offlineBannerText: {
-    color: '#FFB7C2',
-    fontSize: 12,
-  },
+  offlineTextContainer: { marginLeft: 12 },
+  offlineBannerTitle: { color: '#FFD5DB', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 2 },
+  offlineBannerText: { color: '#FFB7C2', fontSize: 12 },
 })
