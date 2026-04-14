@@ -6,6 +6,7 @@ import { AuthContext } from '../../context/AuthContext'
 import { BlurView } from 'expo-blur'
 import Header from '../../components/Header'
 import QRCode from 'react-native-qrcode-svg'
+import { SvgUri } from 'react-native-svg'
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 
 const { width, height } = Dimensions.get('window')
@@ -47,6 +48,19 @@ const getImageUrl = (path) => {
 
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
     return `${baseUrl}/storage/${cleanPath}`;
+};
+
+const parseScanStatus = (ticket) => {
+    const raw = ticket.sale?.is_scanned ?? ticket.is_scanned ?? ticket.scanned ?? ticket.sale?.scanned ?? ticket.sale?.scan_status ?? ticket.scan_status ?? ticket.sale?.status ?? ticket.status;
+    if (typeof raw === 'boolean') return raw ? 'scanned' : 'not_scanned';
+    const value = String(raw ?? '').toLowerCase();
+    if (['1', 'true', 'scanned', 'used', 'already scanned', 'already used', 'checked_in', 'checked-in', 'checked in'].some(k => value.includes(k))) {
+        return 'scanned';
+    }
+    if (['0', 'false', 'not_scanned', 'not scanned', 'unused', 'pending', 'unscanned', 'not used'].some(k => value.includes(k))) {
+        return 'not_scanned';
+    }
+    return 'unknown';
 };
 
 export default function HistoryScreen({ navigation }) {
@@ -109,10 +123,11 @@ export default function HistoryScreen({ navigation }) {
                         status_text: ticket.sale?.status || null,
                         event_id: eventId,
                         seat_plan_url: eventDetails?.seat_plan_url || eventDetails?.seat_plan,
+                        scan_status: parseScanStatus(ticket),
                     };
                 });
-            }
-
+        }
+            
             console.log('Parsed history data:', historyData);
 
             setHistory(historyData);
@@ -212,6 +227,9 @@ export default function HistoryScreen({ navigation }) {
                     ]}>
                         <Text style={styles.statusText}>{isUpcoming ? 'ACTIVE' : isPast ? 'NOT ACTIVE' : (item.status_text || 'UNKNOWN').toUpperCase()}</Text>
                     </View>
+                    <View style={[styles.scanStatusBadge, item.scan_status === 'scanned' ? styles.scanStatusScanned : item.scan_status === 'not_scanned' ? styles.scanStatusNotScanned : styles.scanStatusUnknown]}>
+                        <Text style={styles.scanStatusText}>{item.scan_status === 'scanned' ? 'SCANNED' : item.scan_status === 'not_scanned' ? 'NOT SCANNED' : 'UNKNOWN'}</Text>
+                    </View>
                 </View>
 
                 <View style={styles.cardContent}>
@@ -285,15 +303,31 @@ export default function HistoryScreen({ navigation }) {
                         <View style={styles.qrModalBody}>
                             <Text style={styles.qrEventName}>{selectedTicket.event_name}</Text>
                             <Text style={styles.qrTicketId}>Ticket ID: {selectedTicket.ticket_number || selectedTicket.id}</Text>
-
-                            <View style={[styles.qrContainer, { backgroundColor: `${tierColor}20`, borderColor: `${tierColor}` }]}>
+                            
+                                <View style={[styles.qrContainer, { backgroundColor: `${tierColor}20`, borderColor: `${tierColor}` }]}> 
                                 <View style={styles.qrWrapper}>
-                                    <QRCode
-                                        value={selectedTicket.ticket_number || selectedTicket.id.toString()}
-                                        size={180}
-                                        color="#000"
-                                        backgroundColor="#FFF"
-                                    />
+                                    {selectedTicket.qr_code_url ? (
+                                        selectedTicket.qr_code_url.toLowerCase().endsWith('.svg') ? (
+                                            <SvgUri
+                                                width="180"
+                                                height="180"
+                                                uri={selectedTicket.qr_code_url}
+                                            />
+                                        ) : (
+                                            <Image
+                                                source={{ uri: selectedTicket.qr_code_url }}
+                                                style={styles.qrImage}
+                                                resizeMode="contain"
+                                            />
+                                        )
+                                    ) : (
+                                        <QRCode
+                                            value={String(selectedTicket.ticket_number || selectedTicket.id || '')}
+                                            size={180}
+                                            color="#000"
+                                            backgroundColor="#FFF"
+                                        />
+                                    )}
                                 </View>
                             </View>
 
@@ -304,7 +338,14 @@ export default function HistoryScreen({ navigation }) {
                                 </View>
                                 <View style={styles.qrInfoItem}>
                                     <Text style={styles.qrInfoLabel}>SCAN STATUS</Text>
-                                    <Text style={[styles.qrInfoVal, { color: '#00E5A0' }]}>READY</Text>
+                                    <Text style={[
+                                        styles.qrInfoVal,
+                                        selectedTicket.scan_status === 'scanned' && { color: '#00E5A0' },
+                                        selectedTicket.scan_status === 'not_scanned' && { color: '#FF4D6A' },
+                                        selectedTicket.scan_status === 'unknown' && { color: '#7E97B3' },
+                                    ]}>
+                                        {selectedTicket.scan_status === 'scanned' ? 'SCANNED' : selectedTicket.scan_status === 'not_scanned' ? 'NOT SCANNED' : 'UNKNOWN'}
+                                    </Text>
                                 </View>
                             </View>
                         </View>
@@ -417,6 +458,11 @@ const styles = StyleSheet.create({
     statusPast: { backgroundColor: '#4A556820', borderWidth: 1, borderColor: '#4A5568' },
     statusCancelled: { backgroundColor: '#FF573320', borderWidth: 1, borderColor: '#FF5733' },
     statusText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
+    scanStatusBadge: { marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    scanStatusScanned: { backgroundColor: '#00E5A020', borderWidth: 1, borderColor: '#00E5A0' },
+    scanStatusNotScanned: { backgroundColor: '#FF4D6A20', borderWidth: 1, borderColor: '#FF4D6A' },
+    scanStatusUnknown: { backgroundColor: '#7E97B320', borderWidth: 1, borderColor: '#7E97B3' },
+    scanStatusText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
 
     cardContent: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 16 },
     eventThumb: { width: 50, height: 50, borderRadius: 12 },
@@ -463,6 +509,7 @@ const styles = StyleSheet.create({
     qrTicketId: { color: '#7E97B3', fontSize: 12, fontWeight: '600', marginBottom: 30 },
     qrContainer: { padding: 20, borderRadius: 24, marginBottom: 30, borderWidth: 1 },
     qrWrapper: { padding: 10, backgroundColor: '#FFF', borderRadius: 12 },
+    qrImage: { width: 180, height: 180 },
     qrInfoGrid: { width: '100%', flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F4F7FA', paddingTop: 20, marginBottom: 20 },
     qrInfoItem: { flex: 1, alignItems: 'center' },
     qrInfoLabel: { color: '#7E97B3', fontSize: 10, fontWeight: '800', marginBottom: 4 },
