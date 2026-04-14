@@ -42,6 +42,11 @@ export default function MerchantHomeScreen({ navigation }) {
       ? 'Last 30 days'
       : 'Last 12 months';
 
+  const calculateSpacing = () => {
+    const points = Math.max(selectedChartData.length - 1, 1);
+    return Math.max((width - 90) / points, 18);
+  };
+
   // Enable LayoutAnimation for Android smooth transitions
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
