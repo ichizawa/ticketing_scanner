@@ -47,6 +47,7 @@ const BgDecor = () => (
 
 export default function HomeScreen({ navigation }) {
   const [events, setEvents] = useState([]);
+  const [pastEventsData, setPastEventsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -65,21 +66,36 @@ export default function HomeScreen({ navigation }) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_BASE_URL}/users/events`, {
-        headers: {
-          "Authorization": `Bearer ${userInfo.token}`,
-          "Accept": "application/json"
-        }
-      });
+      const [response, pastResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/users/events`, {
+          headers: {
+            "Authorization": `Bearer ${userInfo.token}`,
+            "Accept": "application/json"
+          }
+        }),
+        fetch(`${API_BASE_URL}/users/past-events`, {
+          headers: {
+            "Authorization": `Bearer ${userInfo.token}`,
+            "Accept": "application/json"
+          }
+        })
+      ]);
 
       if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status}`);
       }
+      if (!pastResponse.ok) {
+        throw new Error(`HTTP Error (Past Events): ${pastResponse.status}`);
+      }
 
       const json = await response.json();
+      const pastJson = await pastResponse.json();
 
       const eventData = json.data || json.events || json;
       setEvents(Array.isArray(eventData) ? eventData : []);
+
+      const pastData = pastJson.data || pastJson.events || pastJson;
+      setPastEventsData(Array.isArray(pastData) ? pastData : []);
     } catch (err) {
       setError(err.message || 'Failed to load events');
       console.error('Error fetching events:', err);
@@ -110,9 +126,8 @@ export default function HomeScreen({ navigation }) {
   const isActive = (e) => e.status === 1 || e.status === '1' || String(e.status).toUpperCase() === 'ACTIVE' || String(e.status).toUpperCase() === 'LIVE';
   const isCompleted = (e) => e.status === 2 || e.status === '2' || String(e.status).toUpperCase() === 'COMPLETED';
 
-  const activeEvents = events.filter(e => isActive(e) && !isCompleted(e));
-  const upcomingEvents = events.filter(e => !isActive(e) && !isCompleted(e) && (e.event_date || '') >= today);
-  const pastEvents = events.filter(e => isCompleted(e) || (!isActive(e) && (e.event_date || '') < today));
+  const activeEvents = events.filter(e => isActive(e) && !isCompleted(e) && (!e.event_date || e.event_date >= today));
+  const upcomingEvents = events.filter(e => !isActive(e) && !isCompleted(e) && e.event_date && e.event_date >= today);
 
   const allFutureEvents = [...activeEvents, ...upcomingEvents];
 
@@ -125,8 +140,8 @@ export default function HomeScreen({ navigation }) {
   // Explore: Show all active, incoming, ongoing
   const exploreEvents = allFutureEvents;
 
-  // Recent: Past or Completed events
-  const recentEvents = pastEvents.slice(0, 10);
+  // Recent: Past or Completed events explicitly fetched from API
+  const recentEvents = pastEventsData.slice(0, 10);
 
   const clonedHeroEvents = heroData.length > 0
     ? [heroData[heroData.length - 1], ...heroData, heroData[0]]
@@ -557,7 +572,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#132035',
     padding: 16, marginBottom: 12,
   },
-  listCardPast: { opacity: 0.4 },
+  listCardPast: { opacity: 0.75 },
   listDateBox: {
     width: 52, height: 52, borderRadius: 14,
     backgroundColor: 'rgba(0,194,255,0.1)',
@@ -566,7 +581,7 @@ const styles = StyleSheet.create({
   listDateBoxPast: { backgroundColor: '#132035' },
   listDateNum: { color: '#00C2FF', fontSize: 18, fontWeight: '800' },
   listDateMonth: { color: '#00C2FF', fontSize: 10, fontWeight: '700' },
-  listTextPast: { color: '#555' },
+  listTextPast: { color: '#8A9BAA' },
   listInfo: { flex: 1 },
   listTitle: { color: '#FFF', fontSize: 16, fontWeight: '700', marginBottom: 4 },
   listDetails: { color: '#3D6080', fontSize: 12 },
