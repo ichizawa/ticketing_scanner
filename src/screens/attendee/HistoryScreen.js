@@ -30,11 +30,11 @@ const formatTime = (time) => {
 const getTierColor = (type, name) => {
     const t = String(type || name || '').toLowerCase();
     if (t.includes('gold') || t.includes('vip') || t.includes('vvip')) return '#FFD700';
-    if (t.includes('silver')) return '#C0C0C0'; 
-    if (t.includes('bronze')) return '#CD7F32'; 
-    if (t.includes('platinum')) return '#E5E4E2'; 
-    if (t.includes('early')) return '#00E5A0'; 
-    if (t.includes('gen') || t.includes('standard') || t.includes('regular') || t.includes('admission')) return '#00C2FF'; 
+    if (t.includes('silver')) return '#C0C0C0';
+    if (t.includes('bronze')) return '#CD7F32';
+    if (t.includes('platinum')) return '#E5E4E2';
+    if (t.includes('early')) return '#00E5A0';
+    if (t.includes('gen') || t.includes('standard') || t.includes('regular') || t.includes('admission')) return '#00C2FF';
     return '#132035';
 };
 
@@ -93,7 +93,7 @@ export default function HistoryScreen({ navigation }) {
             });
 
             console.log('Response status:', response.status);
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Error response:', errorText);
@@ -104,7 +104,7 @@ export default function HistoryScreen({ navigation }) {
             console.log('API Response:', json);
 
             const eventsList = json.events || [];
-            
+
             // Extract customerTickets and merge with sale (event) data
             let historyData = [];
             if (json.customerTickets && Array.isArray(json.customerTickets)) {
@@ -129,7 +129,7 @@ export default function HistoryScreen({ navigation }) {
         }
             
             console.log('Parsed history data:', historyData);
-            
+
             setHistory(historyData);
         } catch (err) {
             setError(err.message || 'Failed to load purchase history');
@@ -242,7 +242,7 @@ export default function HistoryScreen({ navigation }) {
                             <Text style={styles.categoryTagText}>{(item.category || item.type).toUpperCase()}</Text>
                         </View>
                         <Text style={styles.eventTitle} numberOfLines={1}>{item.event_name}</Text>
-                        
+
                         <View style={styles.metaRow}>
                             <View style={styles.metaItem}>
                                 <Foundation name="marker" size={11} color="#00C2FF" />
@@ -281,7 +281,7 @@ export default function HistoryScreen({ navigation }) {
     const renderQRModal = () => {
         if (!selectedTicket) return null;
         const tierColor = getTierColor(selectedTicket.category || selectedTicket.type || selectedTicket.ticket_type, selectedTicket.name);
-        
+
         return (
             <Modal
                 visible={isQRModalVisible}
@@ -290,10 +290,10 @@ export default function HistoryScreen({ navigation }) {
                 onRequestClose={() => setIsQRModalVisible(false)}
             >
                 <BlurView intensity={1000} tint="dark" style={styles.modalOverlay}>
-                    <TouchableOpacity 
-                        style={styles.modalDismiss} 
-                        activeOpacity={1} 
-                        onPress={() => setIsQRModalVisible(false)} 
+                    <TouchableOpacity
+                        style={styles.modalDismiss}
+                        activeOpacity={1}
+                        onPress={() => setIsQRModalVisible(false)}
                     />
                     <Animated.View style={styles.qrModalCard}>
                         
@@ -348,7 +348,7 @@ export default function HistoryScreen({ navigation }) {
                             </View>
                         </View>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.qrCloseBtn}
                             onPress={() => setIsQRModalVisible(false)}
                         >
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     loadingText: { color: '#00C2FF', fontSize: 14, marginTop: 15, fontWeight: '700' },
     errorText: { color: '#FF5733', fontSize: 12, marginTop: 10, textAlign: 'center', paddingHorizontal: 40 },
 
-    categoryTag: { backgroundColor: '#FFD700',alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+    categoryTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
     categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
     detailsBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#132035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2E4A62' },
     detailsBtnText: { color: '#00C2FF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },

@@ -266,7 +266,7 @@ export default function MerchantHomeScreen({ navigation }) {
                   {i > 0 && <View style={styles.statDivider} />}
                   <View style={[styles.statItem, i === 1 && { flex: 2 }]}>
                     <Text style={[styles.statNumber, { color: s.color }, i === 1 && { fontSize: 24, fontWeight: '900' }]}>{s.value}</Text>
-                    <Text style={[styles.statLabel, i === 1 && { color: '#4A8AAF', fontSize: 10 }]}>{s.label}</Text>
+                    <Text style={[styles.statLabel, i === 1 && { color: '#4A8AAF', fontSize: 8 }]}>{s.label}</Text>
                   </View>
                 </React.Fragment>
               ))}

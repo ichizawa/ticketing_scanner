@@ -130,7 +130,7 @@ export default function ExploreEventsScreen({ navigation }) {
     return list;
   }, [futureEvents, selectedCategory, search]);
 
-  const CARD_WIDTH = (width - 20 * 2 - 12) / 2; // 2 cols, 20px side padding, 12px gap
+  const CARD_WIDTH = (width - 20 * 2 - 12) / 2;
 
   const renderItem = ({ item }) => {
     const imgUrl = item.event_image_url || getImageUrl(item.event_image);
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#0B1623', borderRadius: 18,
     borderWidth: 1, borderColor: '#132035',
-    overflow: 'hidden', flex: 1,
+    overflow: 'hidden',
   },
   cardImageWrap: { position: 'relative', height: 130 },
   cardImage: { width: '100%', height: '100%' },
