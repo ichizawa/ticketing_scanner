@@ -43,15 +43,15 @@ const getStatusConfig = (status) => {
   if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
   if (s.includes('ONGOING') || s.includes('LIVE')) return { label: 'ONGOING', color: '#FF4D6A' };
   if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
-  if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
+  if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#FFFFFF' };
   if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
-  
+
   const code = parseInt(status);
   switch (code) {
     case 0: return { label: 'UPCOMING', color: '#FFAA00' };
     case 1: return { label: 'ACTIVE', color: '#00E5A0' };
     case 2: return { label: 'ONGOING', color: '#FF4D6A' };
-    case 3: return { label: 'COMPLETED', color: '#4A5568' };
+    case 3: return { label: 'COMPLETED', color: '#FFFFFF' };
     default: return { label: s || 'ACTIVE', color: '#00E5A0' };
   }
 };
@@ -76,25 +76,53 @@ export default function ManageEventScreen({ navigation }) {
   const TABS = ['All Events', 'Upcoming', 'Ongoing', 'Completed', 'Active', 'Cancelled'];
 
   const getFilteredEvents = () => {
-    if (activeTab === 'All Events') return events;
+    let filtered = events;
 
-    return events.filter(event => {
-      const statusStr = String(event.status || '').toUpperCase();
+    if (activeTab !== 'All Events') {
+      filtered = events.filter(event => {
+        const statusStr = String(event.status || '').toUpperCase();
+        switch (activeTab) {
+          case 'Upcoming':
+            return event.status === 0 || statusStr === 'UPCOMING';
+          case 'Ongoing':
+            return event.status === 2 || statusStr === 'ONGOING';
+          case 'Completed':
+            return event.status === 3 || statusStr === 'COMPLETED' || statusStr === 'PAST';
+          case 'Active':
+            return event.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE';
+          case 'Cancelled':
+            return statusStr === 'CANCELLED';
+          default:
+            return true;
+        }
+      });
+    }
 
-      switch (activeTab) {
-        case 'Upcoming':
-          return event.status === 0;
-        case 'Ongoing':
-          return event.status === 2 || statusStr === 'ONGOING';
-        case 'Completed':
-          return event.status === 3 || statusStr === 'COMPLETED' || statusStr === 'PAST';
-        case 'Active':
-          return event.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE';
-        case 'Cancelled':
-          return statusStr === 'CANCELLED';
-        default:
-          return true;
+    // Sort logic
+    return [...filtered].sort((a, b) => {
+      const statusA = String(a.status || '').toUpperCase();
+      const statusB = String(b.status || '').toUpperCase();
+
+      const isCompA = a.status === 3 || statusA === 'COMPLETED' || statusA === 'PAST';
+      const isCompB = b.status === 3 || statusB === 'COMPLETED' || statusB === 'PAST';
+
+      // Completed always last
+      if (isCompA && !isCompB) return 1;
+      if (!isCompA && isCompB) return -1;
+
+      // Parse dates for hierarchical sorting
+      const dA = new Date(`${a.event_date} ${a.event_time || '00:00'}`).getTime();
+      const dB = new Date(`${b.event_date} ${b.event_time || '00:00'}`).getTime();
+
+      if (!isNaN(dA) && !isNaN(dB)) {
+        if (isCompA) {
+          // Both are completed: most recent past first
+          return dB - dA;
+        }
+        // Both are active/upcoming: soonest first
+        return dA - dB;
       }
+      return 0;
     });
   };
 
@@ -190,8 +218,9 @@ export default function ManageEventScreen({ navigation }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const statusStr = String(item.status || '').toUpperCase();
     const isLive = item.status === 1 || statusStr === 'ACTIVE' || statusStr === 'LIVE' || statusStr === 'ON LIVE';
-    const accentColor = isLive ? '#00E5A0' : '#00C2FF';
     const statusConfig = getStatusConfig(item.status);
+    const isCompleted = statusConfig.label === 'COMPLETED';
+    const accentColor = isLive ? '#00E5A0' : isCompleted ? '#A0AEC0' : '#00C2FF';
 
     const total = item.event_total_tickets || 0;
     const sold = item.tickets_sold || 0;
@@ -199,7 +228,13 @@ export default function ManageEventScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={[styles.eventCard, { borderColor: isLive ? accentColor + '55' : '#132035' }]}
+        style={[
+          styles.eventCard,
+          {
+            borderColor: isLive ? accentColor + '55' : (isCompleted ? '#2D3748' : '#132035'),
+            backgroundColor: isCompleted ? '#1A202C' : '#0B1623'
+          }
+        ]}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EventDetails', { event: item })}
       >
@@ -207,6 +242,7 @@ export default function ManageEventScreen({ navigation }) {
           source={{ uri: item.event_image_url || getImageUrl(item.event_image) }}
           style={styles.cardBanner}
           resizeMode="cover"
+          imageStyle={isCompleted ? { opacity: 0.7 } : {}}
         >
           <LinearGradient
             colors={['rgba(5,10,20,0.2)', 'rgba(5,10,20,0.85)']}
@@ -220,7 +256,7 @@ export default function ManageEventScreen({ navigation }) {
                   </Text>
                 </View>
               )}
-              
+
               <View style={[
                 styles.accentTag,
                 { backgroundColor: 'rgba(5,10,20,0.6)', borderColor: accentColor + '40' }
@@ -241,37 +277,37 @@ export default function ManageEventScreen({ navigation }) {
         </ImageBackground>
 
         <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle}>{item.event_name}</Text>
+          <Text style={[styles.cardTitle, isCompleted && { color: '#E2E8F0' }]}>{item.event_name}</Text>
           <View style={styles.cardMetaRow}>
             <View style={styles.cardMetaItem}>
-              <Foundation name="marker" size={11} color="#00C2FF" />
-              <Text style={styles.cardMetaText} numberOfLines={1}>{item.event_venue || 'TBA'}</Text>
+              <Foundation name="marker" size={11} color={accentColor} />
+              <Text style={[styles.cardMetaText, isCompleted && { color: '#CBD5E0' }]} numberOfLines={1}>{item.event_venue || 'TBA'}</Text>
             </View>
             <View style={styles.cardMetaItem}>
-              <Foundation name="calendar" size={11} color="#00C2FF" />
-              <Text style={styles.cardMetaText}>{item.event_date}</Text>
+              <Foundation name="calendar" size={11} color={accentColor} />
+              <Text style={[styles.cardMetaText, isCompleted && { color: '#CBD5E0' }]}>{item.event_date}</Text>
             </View>
             <View style={styles.cardMetaItem}>
-              <Foundation name="clock" size={11} color="#00C2FF" />
-              <Text style={styles.cardMetaText}>{formatTime(item.event_time)}</Text>
+              <Foundation name="clock" size={11} color={accentColor} />
+              <Text style={[styles.cardMetaText, isCompleted && { color: '#CBD5E0' }]}>{formatTime(item.event_time)}</Text>
             </View>
           </View>
 
           {/* About Event - Expandable Description */}
           {item.description && (
             <View style={styles.cardAbout}>
-              <Text 
-                style={styles.cardAboutText} 
+              <Text
+                style={styles.cardAboutText}
                 numberOfLines={isExpanded ? undefined : 2}
               >
                 {item.description}
               </Text>
               {item.description.length > 100 && (
-                <TouchableOpacity 
-                   onPress={() => setIsExpanded(!isExpanded)}
-                   style={styles.cardReadMore}
+                <TouchableOpacity
+                  onPress={() => setIsExpanded(!isExpanded)}
+                  style={styles.cardReadMore}
                 >
-                  <Text style={styles.cardReadMoreText}>
+                  <Text style={[styles.cardReadMoreText, isCompleted && { color: accentColor }]}>
                     {isExpanded ? 'View Less' : 'View More'}
                   </Text>
                 </TouchableOpacity>
@@ -280,8 +316,8 @@ export default function ManageEventScreen({ navigation }) {
           )}
         </View>
 
-        <View style={[styles.cardFooter, { borderTopColor: '#0F1E30' }]}>
-          <Text style={styles.cardFooterText}>
+        <View style={[styles.cardFooter, { borderTopColor: isCompleted ? '#2D3748' : '#0F1E30' }]}>
+          <Text style={[styles.cardFooterText, isCompleted && { color: accentColor }]}>
             VIEW DETAILS ›
           </Text>
         </View>
@@ -434,18 +470,18 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 9, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase'
   },
-  categoryPill: { 
-    backgroundColor: '#FFD700', 
-    paddingHorizontal: 8, 
-    paddingVertical: 3, 
+  categoryPill: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 0
   },
-  categoryPillText: { 
-    color: '#050A14', 
-    fontSize: 9, 
-    fontWeight: '900', 
-    letterSpacing: 0.5 
+  categoryPillText: {
+    color: '#050A14',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5
   },
   cardTitle: {
     color: '#FFFFFF', fontSize: 17, fontWeight: '800', paddingHorizontal: 16,
