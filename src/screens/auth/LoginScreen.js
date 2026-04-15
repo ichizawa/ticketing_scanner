@@ -154,13 +154,6 @@ export default function LoginScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Forgot Password */}
-            <Animated.View style={[styles.forgotRow, { transform: [{ translateY: card2Anim }], opacity: fadeAnim }]}>
-              <TouchableOpacity>
-                <Text style={styles.forgotText}>Forgot password?</Text>
-              </TouchableOpacity>
-            </Animated.View>
-
             {/* Login Button */}
             <Animated.View style={{ transform: [{ translateY: card3Anim }], opacity: fadeAnim }}>
               <TouchableOpacity
@@ -173,30 +166,13 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Divider */}
-            <Animated.View style={[styles.divider, { opacity: fadeAnim }]}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </Animated.View>
-
-            {/* SSO Button */}
-            <Animated.View style={{ transform: [{ translateY: card3Anim }], opacity: fadeAnim }}>
-              <TouchableOpacity
-                onPress={handleNavigateToScan}
-                style={styles.ssoBtn} activeOpacity={0.85}>
-                <Text style={styles.ssoBtnText}>Continue with QR</Text>
+            {/* Forgot Password */}
+            <Animated.View style={[styles.forgotRow, { transform: [{ translateY: card2Anim }], opacity: fadeAnim }]}>
+              <TouchableOpacity>
+                <Text style={styles.forgotText}>Forgot password?</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Animated.View>  
           </View>
-
-          {/* Footer */}
-          <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
-            <Text style={styles.footerText}>
-              New to MediaOneTix?{' '}
-              <Text style={styles.footerLink}>Request Access</Text>
-            </Text>
-          </Animated.View>
         </View>
       </ScrollView>
     </SafeAreaView>

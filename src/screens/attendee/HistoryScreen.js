@@ -296,9 +296,7 @@ export default function HistoryScreen({ navigation }) {
                         onPress={() => setIsQRModalVisible(false)}
                     />
                     <Animated.View style={styles.qrModalCard}>
-                        {/* <View style={styles.qrModalHeader}>
-                            <Text style={styles.qrModalTitle}>Electronic Ticket</Text>
-                        </View> */}
+                        
 
                         <View style={styles.qrModalBody}>
                             <Text style={styles.qrEventName}>{selectedTicket.event_name}</Text>
