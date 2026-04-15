@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, Animated, Dimensions, StatusBar } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Dimensions, StatusBar, TextInput } from 'react-native'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import NetInfo from '@react-native-community/netinfo'
 import { useIsFocused } from '@react-navigation/native'
@@ -15,6 +15,23 @@ export default function ScannerScreen({ navigation }) {
   const isFocused = useIsFocused()
   const { userInfo } = useContext(AuthContext)
   const [permission, requestPermission] = useCameraPermissions()
+  
+  const [isPinVerified, setIsPinVerified] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false)
+  const [pinError, setPinError] = useState('')
+
+  const [manualTicketId, setManualTicketId] = useState('')
+  const [isManualEntry, setIsManualEntry] = useState(false)
+
+  useEffect(() => {
+    if (!isFocused) {
+      setIsPinVerified(false)
+      setPinInput('') 
+      setPinError('') 
+    }
+  }, [isFocused])
+
   const [scanResult, setScanResult] = useState(null)
   const [resultData, setResultData] = useState(null)
   const [isScanning, setIsScanning] = useState(true)
@@ -23,6 +40,48 @@ export default function ScannerScreen({ navigation }) {
   const [scanCount, setScanCount] = useState(0)
   const [successCount, setSuccessCount] = useState(0)
   const [lastScannedValue, setLastScannedValue] = useState(null)
+
+  const handleVerifyPin = async () => {
+    if (!pinInput || pinInput.length < 4 || pinInput.length > 6) {
+      setPinError('PIN must be 4 to 6 digits.')
+      return
+    }
+
+    setIsVerifyingPin(true)
+    setPinError('')
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/staff/verify-pin`, {
+        method: 'POST', 
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${userInfo?.token}`,
+        },
+        body: JSON.stringify({ security_pin: pinInput }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (response.ok && data.success) {
+        setIsPinVerified(true)
+      } else {
+        setPinError(data.message || 'Invalid security PIN.')
+      }
+    } catch (error) {
+      console.log('PIN verify error:', error)
+      setPinError('Network error. Please try again.')
+    } finally {
+      setIsVerifyingPin(false)
+    }
+  }
+
+  const handleManualSubmit = () => {
+    if (!manualTicketId.trim()) return
+    setIsManualEntry(false)
+    verifyAndScanTicket(manualTicketId.trim())
+    setManualTicketId('')
+  }
 
   const extractRefNumber = (rawValue) => {
     if (!rawValue) return null
@@ -95,7 +154,7 @@ export default function ScannerScreen({ navigation }) {
       if (isNaN(d.getTime())) return String(dateInput);
 
       const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const mm = String(d.getMonth() + 1).padStart(2, '0'); 
       const dd = String(d.getDate()).padStart(2, '0');
       const hh = String(d.getHours()).padStart(2, '0');
       const min = String(d.getMinutes()).padStart(2, '0');
@@ -325,6 +384,52 @@ export default function ScannerScreen({ navigation }) {
     )
   }
 
+  // --- NEW: PIN Verification View ---
+  if (!isPinVerified) {
+    return (
+      <View style={[styles.root, styles.permissionWrapper]}>
+        <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+        <SafeAreaView style={styles.permissionSafeArea}>
+          <Header navigation={navigation} />
+          <View style={styles.permissionCard}>
+            <Text style={styles.permissionTitle}>Security Required</Text>
+            <Text style={styles.permissionText}>
+              Enter your staff PIN to unlock the ticket scanner.
+            </Text>
+            
+            <TextInput
+              style={styles.pinInput}
+              value={pinInput}
+              onChangeText={(text) => {
+                setPinInput(text)
+                setPinError('')
+              }}
+              keyboardType="numeric"
+              secureTextEntry
+              maxLength={6}
+              placeholder="••••"
+              placeholderTextColor="#3D6080"
+              editable={!isVerifyingPin}
+            />
+            
+            {pinError ? <Text style={styles.errorText}>{pinError}</Text> : null}
+
+            <TouchableOpacity 
+              style={[styles.permissionBtn, { marginTop: 14 }]} 
+              onPress={handleVerifyPin}
+              disabled={isVerifyingPin}
+            >
+              <Text style={styles.permissionBtnText}>
+                {isVerifyingPin ? 'Verifying...' : 'Unlock Scanner'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+  // ----------------------------------
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
@@ -426,7 +531,7 @@ export default function ScannerScreen({ navigation }) {
         </View>
 
         <View style={styles.manualRow}>
-          <TouchableOpacity style={styles.manualBtn}>
+          <TouchableOpacity style={styles.manualBtn} onPress={() => setIsManualEntry(true)}>
             <Text style={styles.manualBtnText}>Enter Ticket ID Manually</Text>
           </TouchableOpacity>
         </View>
@@ -496,6 +601,32 @@ export default function ScannerScreen({ navigation }) {
           </Animated.View>
         </Animated.View>
       )}
+
+      {isManualEntry && (
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBg} onPress={() => setIsManualEntry(false)} activeOpacity={1} />
+          <View style={styles.manualModal}>
+            <Text style={styles.manualTitle}>Enter Ticket ID</Text>
+            <TextInput
+              style={styles.manualInput}
+              value={manualTicketId}
+              onChangeText={setManualTicketId}
+              placeholder="Ticket ID"
+              placeholderTextColor="#3D6080"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View style={styles.manualButtons}>
+              <TouchableOpacity style={styles.manualCancelBtn} onPress={() => setIsManualEntry(false)}>
+                <Text style={styles.manualCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.manualSubmitBtn} onPress={handleManualSubmit}>
+                <Text style={styles.manualSubmitText}>Verify</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
@@ -541,10 +672,11 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   permissionBtn: {
+    alignItems: 'center', // Center text for PIN button usage too
     alignSelf: 'flex-start',
     backgroundColor: '#00C2FF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderRadius: 12,
   },
   permissionBtnText: {
@@ -552,6 +684,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
+
+  // --- NEW: PIN Specific Styles ---
+  pinInput: {
+    backgroundColor: '#050A14',
+    borderWidth: 1,
+    borderColor: '#132035',
+    borderRadius: 12,
+    color: '#FFFFFF',
+    fontSize: 24,
+    letterSpacing: 8,
+    textAlign: 'center',
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#FF4D6A',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  // --------------------------------
 
   offlineBanner: {
     marginHorizontal: 20,
@@ -662,7 +816,7 @@ const styles = StyleSheet.create({
   manualBtn: { paddingVertical: 8, paddingHorizontal: 20 },
   manualBtnText: { color: '#2E4A62', fontSize: 12, fontWeight: '500' },
 
-  // Overlay
+
   overlay: {
     ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end',
     backgroundColor: 'rgba(5,10,20,0.85)', zIndex: 100,
@@ -718,4 +872,61 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   ctaBtnText: { color: '#050A14', fontSize: 13, fontWeight: '900', letterSpacing: 2.5 },
-});
+
+
+  manualModal: {
+    backgroundColor: '#0B1623',
+    marginHorizontal: 20,
+    marginBottom: 300,
+    padding: 24,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#132035',
+  },
+  manualTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  manualInput: {
+    backgroundColor: '#050A14',
+    borderWidth: 1,
+    borderColor: '#132035',
+    borderRadius: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  manualButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  manualCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginRight: 10,
+  },
+  manualCancelText: {
+    color: '#3D6080',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manualSubmitBtn: {
+    flex: 1,
+    backgroundColor: '#00C2FF',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginLeft: 10,
+  },
+  manualSubmitText: {
+    color: '#050A14',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+})
