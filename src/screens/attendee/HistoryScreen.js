@@ -126,8 +126,8 @@ export default function HistoryScreen({ navigation }) {
                         scan_status: parseScanStatus(ticket),
                     };
                 });
-        }
-            
+            }
+
             console.log('Parsed history data:', historyData);
 
             setHistory(historyData);
@@ -218,15 +218,7 @@ export default function HistoryScreen({ navigation }) {
         return (
             <View style={styles.orderCard}>
                 <View style={styles.cardHeader}>
-                    <View>
-                        <Text style={styles.txnId}>ID: {item.id}</Text>
-                    </View>
-                    <View style={[styles.statusBadge,
-                    isUpcoming ? styles.statusUpcoming :
-                        isPast ? styles.statusPast : styles.statusCancelled
-                    ]}>
-                        <Text style={styles.statusText}>{isUpcoming ? 'ACTIVE' : isPast ? 'NOT ACTIVE' : (item.status_text || 'UNKNOWN').toUpperCase()}</Text>
-                    </View>
+                    <Text style={styles.txnId}>ID: {item.id}</Text>
                     <View style={[styles.scanStatusBadge, item.scan_status === 'scanned' ? styles.scanStatusScanned : item.scan_status === 'not_scanned' ? styles.scanStatusNotScanned : styles.scanStatusUnknown]}>
                         <Text style={styles.scanStatusText}>{item.scan_status === 'scanned' ? 'SCANNED' : item.scan_status === 'not_scanned' ? 'NOT SCANNED' : 'UNKNOWN'}</Text>
                     </View>
@@ -238,8 +230,16 @@ export default function HistoryScreen({ navigation }) {
                         style={styles.eventThumb}
                     />
                     <View style={styles.eventDetails}>
-                        <View style={styles.categoryTag}>
-                            <Text style={styles.categoryTagText}>{(item.category || item.type).toUpperCase()}</Text>
+                        <View style={styles.tagsRow}>
+                            <View style={styles.categoryTag}>
+                                <Text style={styles.categoryTagText}>{(item.category || item.type).toUpperCase()}</Text>
+                            </View>
+                            <View style={[styles.statusBadge,
+                            isUpcoming ? styles.statusUpcoming :
+                                isPast ? styles.statusPast : styles.statusCancelled
+                            ]}>
+                                <Text style={styles.statusText}>{isUpcoming ? 'ACTIVE' : isPast ? 'NOT ACTIVE' : (item.status_text).toUpperCase()}</Text>
+                            </View>
                         </View>
                         <Text style={styles.eventTitle} numberOfLines={1}>{item.event_name}</Text>
 
@@ -296,13 +296,13 @@ export default function HistoryScreen({ navigation }) {
                         onPress={() => setIsQRModalVisible(false)}
                     />
                     <Animated.View style={styles.qrModalCard}>
-                        
+
 
                         <View style={styles.qrModalBody}>
                             <Text style={styles.qrEventName}>{selectedTicket.event_name}</Text>
                             <Text style={styles.qrTicketId}>Ticket ID: {selectedTicket.ticket_number || selectedTicket.id}</Text>
-                            
-                                <View style={[styles.qrContainer, { backgroundColor: `${tierColor}20`, borderColor: `${tierColor}` }]}> 
+
+                            <View style={[styles.qrContainer, { backgroundColor: `${tierColor}20`, borderColor: `${tierColor}` }]}>
                                 <View style={styles.qrWrapper}>
                                     {selectedTicket.qr_code_url ? (
                                         selectedTicket.qr_code_url.toLowerCase().endsWith('.svg') ? (
@@ -448,19 +448,19 @@ const styles = StyleSheet.create({
 
     // Order Card
     orderCard: { backgroundColor: '#0B1623', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#132035' },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     txnId: { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
     orderDate: { color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 2, opacity: 0.9 },
-    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     statusUpcoming: { backgroundColor: '#00C2FF20', borderWidth: 1, borderColor: '#00C2FF' },
     statusPast: { backgroundColor: '#4A556820', borderWidth: 1, borderColor: '#4A5568' },
     statusCancelled: { backgroundColor: '#FF573320', borderWidth: 1, borderColor: '#FF5733' },
-    statusText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
-    scanStatusBadge: { marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    statusText: { color: '#FFF', fontSize: 8, fontWeight: '900' },
+    scanStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, justifyContent: 'end', alignItems: 'center' },
     scanStatusScanned: { backgroundColor: '#00E5A020', borderWidth: 1, borderColor: '#00E5A0' },
     scanStatusNotScanned: { backgroundColor: '#FF4D6A20', borderWidth: 1, borderColor: '#FF4D6A' },
     scanStatusUnknown: { backgroundColor: '#7E97B320', borderWidth: 1, borderColor: '#7E97B3' },
-    scanStatusText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
+    scanStatusText: { color: '#FFF', fontSize: 8, fontWeight: '900' },
 
     cardContent: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 16 },
     eventThumb: { width: 50, height: 50, borderRadius: 12 },
@@ -489,8 +489,9 @@ const styles = StyleSheet.create({
     loadingText: { color: '#00C2FF', fontSize: 14, marginTop: 15, fontWeight: '700' },
     errorText: { color: '#FF5733', fontSize: 12, marginTop: 10, textAlign: 'center', paddingHorizontal: 40 },
 
-    categoryTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+    categoryTag: { backgroundColor: '#FFD700', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
     categoryTagText: { color: '#050A14', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+    tagsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
     detailsBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#132035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2E4A62' },
     detailsBtnText: { color: '#00C2FF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
     qrBtn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: '#00C2FF', alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },

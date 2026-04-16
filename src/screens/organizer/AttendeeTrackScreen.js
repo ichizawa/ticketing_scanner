@@ -79,6 +79,9 @@ function EventSelectionView({ onSelect, navigation }) {
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('All Events')
   const TABS = ['All Events', 'Upcoming', 'Ongoing', 'Completed', 'Active', 'Cancelled']
+  const TAB_DOTS = Math.ceil(TABS.length / 2)
+  const [tabScrollIndex, setTabScrollIndex] = useState(0)
+  const tabScrollRef = useRef(null)
   const [isConnected, setIsConnected] = useState(true)
 
   const getFilteredEvents = () => {
@@ -335,23 +338,51 @@ function EventSelectionView({ onSelect, navigation }) {
           {/* Standardized Merchant Tabs */}
           <View style={styles.tabsWrapper}>
             <ScrollView 
+              ref={tabScrollRef}
               horizontal 
               showsHorizontalScrollIndicator={false} 
               contentContainerStyle={styles.tabsScroll}
+              onScroll={(e) => {
+                const x = e.nativeEvent.contentOffset.x
+                const contentW = e.nativeEvent.contentSize.width
+                const visibleW = e.nativeEvent.layoutMeasurement.width
+                const maxScroll = contentW - visibleW
+                const dotIndex = maxScroll > 0
+                  ? Math.round((x / maxScroll) * (TAB_DOTS - 1))
+                  : 0
+                setTabScrollIndex(dotIndex)
+              }}
+              scrollEventThrottle={16}
             >
-              {TABS.map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  onPress={() => setActiveTab(tab)}
-                  style={[styles.tabItem, activeTab === tab && styles.activeTabItem]}
-                >
-                  <Text style={[styles.tabTextUI, activeTab === tab && styles.activeTabTextUI]}>
-                    {tab}
-                  </Text>
-                  {activeTab === tab && <View style={styles.activeIndicator} />}
-                </TouchableOpacity>
-              ))}
+              {TABS.map((tab) => {
+                const isActiveTab = activeTab === tab
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    onPress={() => setActiveTab(tab)}
+                    style={[styles.tabItem, isActiveTab && styles.activeTabItem]}
+                  >
+                    <Text style={[styles.tabTextUI, isActiveTab && styles.activeTabTextUI]}>
+                      {tab}
+                    </Text>
+                    {isActiveTab && <View style={styles.activeIndicator} />}
+                  </TouchableOpacity>
+                )
+              })}
             </ScrollView>
+
+            {/* Pagination dots */}
+            <View style={styles.tabDots}>
+              {Array.from({ length: TAB_DOTS }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.tabDot,
+                    i === tabScrollIndex && styles.tabDotActive
+                  ]}
+                />
+              ))}
+            </View>
           </View>
 
           {/* Event cards */}
@@ -713,6 +744,29 @@ export default function AttendeeTrackScreen({ navigation }) {
     shadowOpacity: 0.8,
     shadowRadius: 4,
     elevation: 4,
+  },
+  tabDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 5,
+  },
+  tabDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(74, 138, 175, 0.3)',
+  },
+  tabDotActive: {
+    width: 16,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#00C2FF',
+    shadowColor: '#00C2FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   eventCard: {

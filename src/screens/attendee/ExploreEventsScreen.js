@@ -55,6 +55,9 @@ export default function ExploreEventsScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [tabScrollIndex, setTabScrollIndex] = useState(0);
+  const tabScrollRef = React.useRef(null);
+  const [isTabScrollable, setIsTabScrollable] = useState(false);
 
   const fetchEvents = async (isRefresh = false) => {
     try {
@@ -110,6 +113,8 @@ export default function ExploreEventsScreen({ navigation }) {
     });
     return ['All', ...Array.from(seen).sort()];
   }, [futureEvents]);
+
+  const TAB_DOTS = Math.ceil(categories.length / 2);
 
   const filtered = useMemo(() => {
     let list = futureEvents;
@@ -224,9 +229,25 @@ export default function ExploreEventsScreen({ navigation }) {
         {/* Category Tabs */}
         <View style={styles.tabsWrapper}>
           <ScrollView
+            ref={tabScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tabsScroll}
+            onScroll={(e) => {
+              const x = e.nativeEvent.contentOffset.x;
+              const contentW = e.nativeEvent.contentSize.width;
+              const visibleW = e.nativeEvent.layoutMeasurement.width;
+              const maxScroll = contentW - visibleW;
+              const dotIndex = maxScroll > 0
+                ? Math.round((x / maxScroll) * (TAB_DOTS - 1))
+                : 0;
+              setTabScrollIndex(dotIndex);
+            }}
+            scrollEventThrottle={16}
+            onContentSizeChange={(w) => {
+              if (w > width) setIsTabScrollable(true);
+              else setIsTabScrollable(false);
+            }}
           >
             {categories.map((cat) => {
               const isTab = cat === selectedCategory;
@@ -244,6 +265,21 @@ export default function ExploreEventsScreen({ navigation }) {
               );
             })}
           </ScrollView>
+
+          {/* Pagination dots */}
+          {isTabScrollable && (
+            <View style={styles.tabDots}>
+              {Array.from({ length: TAB_DOTS }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.tabDot,
+                    i === tabScrollIndex && styles.tabDotActive
+                  ]}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Events List */}
@@ -324,7 +360,7 @@ const styles = StyleSheet.create({
     flex: 1, color: '#FFF', fontSize: 14, fontWeight: '500',
   },
 
-  // Category tabs — matching ManageEventScreen style
+  // Category tabs
   tabsWrapper: {
     marginVertical: 10,
     borderBottomWidth: 1,
@@ -363,6 +399,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 4,
     elevation: 4,
+  },
+  tabDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 5,
+  },
+  tabDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(74, 138, 175, 0.3)',
+  },
+  tabDotActive: {
+    width: 16,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#00C2FF',
+    shadowColor: '#00C2FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   // List

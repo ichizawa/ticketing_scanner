@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, StatusBar, Animated, ScrollView, Image, ImageBackground, RefreshControl } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, StatusBar, Animated, ScrollView, Image, ImageBackground, RefreshControl, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Foundation } from '@expo/vector-icons';
@@ -72,8 +72,12 @@ export default function ManageEventScreen({ navigation }) {
 
   const [activeTab, setActiveTab] = useState('All Events');
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const tabScrollRef = useRef(null);
+  const [tabScrollIndex, setTabScrollIndex] = useState(0);
 
   const TABS = ['All Events', 'Upcoming', 'Ongoing', 'Completed', 'Active', 'Cancelled'];
+  // Show 3 tabs at a time roughly — dots represent groups of tabs
+  const TAB_DOTS = Math.ceil(TABS.length / 2);
 
   const getFilteredEvents = () => {
     let filtered = events;
@@ -185,9 +189,21 @@ export default function ManageEventScreen({ navigation }) {
   const renderTabs = () => (
     <View style={styles.tabsWrapper}>
       <ScrollView
+        ref={tabScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsScroll}
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const contentW = e.nativeEvent.contentSize.width;
+          const visibleW = e.nativeEvent.layoutMeasurement.width;
+          const maxScroll = contentW - visibleW;
+          const dotIndex = maxScroll > 0
+            ? Math.round((x / maxScroll) * (TAB_DOTS - 1))
+            : 0;
+          setTabScrollIndex(dotIndex);
+        }}
+        scrollEventThrottle={16}
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab;
@@ -211,6 +227,19 @@ export default function ManageEventScreen({ navigation }) {
           );
         })}
       </ScrollView>
+
+      {/* Pagination dots */}
+      <View style={styles.tabDots}>
+        {Array.from({ length: TAB_DOTS }).map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.tabDot,
+              i === tabScrollIndex && styles.tabDotActive
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 
@@ -565,9 +594,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeTabItem: {
-    // marginBottom: -10,
-  },
+  activeTabItem: {},
   tabTextUI: {
     color: '#4A8AAF',
     fontSize: 13,
@@ -588,5 +615,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 4,
     elevation: 4,
+  },
+  tabDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 5,
+  },
+  tabDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(74, 138, 175, 0.3)',
+  },
+  tabDotActive: {
+    width: 16,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#00C2FF',
+    shadowColor: '#00C2FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

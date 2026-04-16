@@ -5,7 +5,8 @@ import {
   RefreshControl, LayoutAnimation, Platform, UIManager 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Foundation } from '@expo/vector-icons';
+import { Ionicons, Foundation } from '@expo/vector-icons';
+import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import { LineChart } from 'react-native-gifted-charts';
 import { AuthContext } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
@@ -28,6 +29,8 @@ export default function MerchantHomeScreen({ navigation }) {
 
   const [chartPeriod, setChartPeriod] = useState('week');
   const [chartData, setChartData] = useState({ week: [], month: [], year: [] });
+  const [baseScale, setBaseScale] = useState(1);
+  const [pinchScale, setPinchScale] = useState(1);
 
   const chartPeriods = [
     { key: 'week', label: 'Week' },
@@ -41,6 +44,25 @@ export default function MerchantHomeScreen({ navigation }) {
     : chartPeriod === 'month'
       ? 'Last 30 days'
       : 'Last 12 months';
+
+  const onPinchEvent = (event) => {
+    setPinchScale(event.nativeEvent.scale);
+  };
+
+  const onPinchStateChange = (event) => {
+    if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
+      let currentScale = baseScale * event.nativeEvent.scale;
+      currentScale = Math.min(Math.max(currentScale, 0.5), 6);
+      setBaseScale(currentScale);
+      setPinchScale(1);
+    }
+  };
+
+  const zoomFactor = Math.min(Math.max(baseScale * pinchScale, 0.5), 6);
+
+  const calculatePeriodTotal = () => {
+    return selectedChartData.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+  };
 
   const calculateSpacing = () => {
     const points = Math.max(selectedChartData.length - 1, 1);
@@ -66,7 +88,29 @@ export default function MerchantHomeScreen({ navigation }) {
       }
 
       const value = Number(item[valueField] ?? item.value ?? item.amount ?? item.revenue ?? item.total) || 0;
-      const label = String(item[labelField] ?? item.name ?? item.day ?? item.period ?? item.date ?? item.label ?? '').substring(0, 12);
+      let rawLabel = String(item[labelField] ?? item.name ?? item.day ?? item.period ?? item.date ?? item.label ?? '');
+      
+      // Smart date formatting if possible
+      let label = rawLabel;
+      if (rawLabel.includes('-') && rawLabel.length >= 7) {
+        try {
+          const d = new Date(rawLabel);
+          if (!isNaN(d.getTime())) {
+            if (chartPeriod === 'week') {
+              label = d.toLocaleDateString('en-US', { weekday: 'short' }); // Mon, Tue
+            } else if (chartPeriod === 'month') {
+              label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); // Apr 15
+            } else if (chartPeriod === 'year') {
+              label = d.toLocaleDateString('en-US', { month: 'short' }); // Jan, Feb
+            }
+          }
+        } catch (e) {
+          label = rawLabel.substring(0, 12);
+        }
+      } else {
+        label = rawLabel.substring(0, 12);
+      }
+
       return { value, label };
     });
   };
@@ -227,9 +271,35 @@ export default function MerchantHomeScreen({ navigation }) {
     }
   };
 
+  const maxVal = Math.max(...selectedChartData.map(d => d.value), 0);
+  let chartStepValue = 100;
+  let chartNoOfSections = 4;
+
+  if (maxVal > 0) {
+    const idealStep = (maxVal * 1.2) / chartNoOfSections;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(idealStep)));
+    const normalizedStep = idealStep / magnitude;
+    
+    let stepMultiplier = 1;
+    if (normalizedStep > 5) stepMultiplier = 10;
+    else if (normalizedStep > 2.5) stepMultiplier = 5;
+    else if (normalizedStep > 2) stepMultiplier = 2.5;
+    else if (normalizedStep > 1) stepMultiplier = 2;
+    
+    chartStepValue = stepMultiplier * magnitude;
+  }
+  const chartMaxValue = chartStepValue * chartNoOfSections;
+
+  // Active events filter wrapper
+  const activeEventsList = events.filter((e) => {
+    const st = String(e.status).toUpperCase();
+    return st === '1' || st === 'ACTIVE' || st === 'LIVE' || st === 'ON LIVE';
+  });
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+
 
       <View style={styles.bgOrb1} />
       <View style={styles.bgOrb2} />
@@ -275,92 +345,115 @@ export default function MerchantHomeScreen({ navigation }) {
             {/* Revenue Overview Chart */}
             <View style={styles.chartSection}>
               <View style={styles.chartHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Revenue Overview</Text>
-                  <Text style={styles.chartSubtitle}>{selectedChartLabel}</Text>
+                {/* Header Top Row: Title & Period Total */}
+                <View style={styles.chartHeaderTop}>
+                  <View>
+                    <Text style={styles.sectionTitle}>Revenue Overview</Text>
+                    <Text style={styles.chartSubtitle}>{selectedChartLabel}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.periodTotalValue}>{formatCurrency(calculatePeriodTotal())}</Text>
+                    <Text style={styles.periodTotalTitle}>PERIOD REVENUE</Text>
+                  </View>
                 </View>
-                <View style={styles.tabContainer}>
-                  {chartPeriods.map(({ key, label }) => {
-                    const hasData = (chartData[key] || []).length > 0;
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        onPress={() => {
-                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                          setChartPeriod(key);
-                        }}
-                        style={[
-                          styles.tabBtn,
-                          chartPeriod === key && styles.tabBtnActive,
-                          !hasData && styles.tabBtnDisabled
-                        ]}
-                        activeOpacity={hasData ? 0.7 : 1}
-                        disabled={!hasData}
-                      >
-                        <Text style={[styles.tabText, chartPeriod === key && styles.tabTextActive, !hasData && styles.tabTextDisabled]}>
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+
+                {/* Period Tab */}
+                <View style={styles.chartTabsWrapper}>
+                  <View style={styles.tabContainer}>
+                    {chartPeriods.map(({ key, label }) => {
+                      const hasData = (chartData[key] || []).length > 0;
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setChartPeriod(key);
+                            setBaseScale(1);
+                          }}
+                          style={[
+                            styles.tabBtn,
+                            chartPeriod === key && styles.tabBtnActive,
+                            !hasData && styles.tabBtnDisabled
+                          ]}
+                          activeOpacity={hasData ? 0.7 : 1}
+                          disabled={!hasData}
+                        >
+                          <Text style={[styles.tabText, chartPeriod === key && styles.tabTextActive, !hasData && styles.tabTextDisabled]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               </View>
 
               <View style={styles.chartCardWrapper}>
                 {selectedChartData.length > 0 ? (
-                  <LineChart
-                    areaChart
-                    curved
-                    data={selectedChartData}
-                    width={width - 85} 
-                    hideDataPoints={false}
-                    dataPointsColor="#00E5A0"
-                    dataPointsRadius={4}
-                    spacing={calculateSpacing()}
-                    color="#00C2FF"
-                    thickness={3}
-                    startFillColor="rgba(0, 194, 255, 0.28)"
-                    endFillColor="rgba(0, 194, 255, 0.02)"
-                    initialSpacing={20}
-                    endSpacing={20}
-                    topSpacing={30}
-                    bottomSpacing={10}
-                    noOfSections={4}
-                    maxValue={Math.max(...selectedChartData.map(d => d.value)) * 1.25 || 1}
-                    yAxisColor="transparent"
-                    yAxisTextStyle={{ color: '#7E97B3', fontSize: 10, fontWeight: '600' }}
-                    xAxisColor="transparent"
-                    xAxisLabelTextStyle={{ color: '#7E97B3', fontSize: 10, marginBottom: 4 }}
-                    rulesType="dashed"
-                    dashWidth={4}
-                    dashGap={4}
-                    rulesColor="rgba(74, 138, 175, 0.12)"
-                    yAxisLabelFormatter={(val) => {
-                      if (val >= 1000000) return `₱${(val / 1000000).toFixed(1)}M`;
-                      if (val >= 1000) return `₱${(val / 1000).toFixed(0)}k`;
-                      return `₱${val}`;
-                    }}
-                    isAnimated
-                    animationDuration={900}
-                    scrollAnimation={true}
-                    pointerConfig={{
-                      pointerStripHeight: 170,
-                      pointerStripColor: 'rgba(0, 194, 255, 0.15)',
-                      pointerStripWidth: 2,
-                      pointerColor: '#00C2FF',
-                      radius: 5,
-                      pointerLabelWidth: 100,
-                      pointerLabelHeight: 76,
-                      activatePointersOnLongPress: true,
-                      autoAdjustPointerLabelPosition: true,
-                      pointerLabelComponent: items => (
-                        <View style={styles.tooltipBox}>
-                          <Text style={styles.tooltipLabel}>{items[0].label || selectedChartLabel}</Text>
-                          <Text style={styles.tooltipValue}>₱{items[0].value.toLocaleString()}</Text>
-                        </View>
-                      ),
-                    }}
-                  />
+                  <PinchGestureHandler
+                    onGestureEvent={onPinchEvent}
+                    onHandlerStateChange={onPinchStateChange}
+                  >
+                    <View>
+                      <LineChart
+                        areaChart
+                        curved
+                        data={selectedChartData}
+                        width={width - 85} 
+                        hideDataPoints={false}
+                        dataPointsColor="#00E5A0"
+                        dataPointsRadius={4}
+                        spacing={calculateSpacing() * zoomFactor}
+                        color="#00C2FF"
+                        thickness={3}
+                        startFillColor="rgba(0, 194, 255, 0.28)"
+                        endFillColor="rgba(0, 194, 255, 0.02)"
+                        initialSpacing={20 * zoomFactor}
+                        endSpacing={20 * zoomFactor}
+                        topSpacing={30}
+                        bottomSpacing={10}
+                        noOfSections={chartNoOfSections}
+                        stepValue={chartStepValue}
+                        maxValue={chartMaxValue}
+                        yAxisColor="transparent"
+                        yAxisTextStyle={{ color: '#7E97B3', fontSize: 10, fontWeight: '600' }}
+                        xAxisColor="transparent"
+                        xAxisLabelTextStyle={{ color: '#7E97B3', fontSize: 10, marginBottom: 4 }}
+                        rulesType="dashed"
+                        dashWidth={4}
+                        dashGap={4}
+                        rulesColor="rgba(74, 138, 175, 0.12)"
+                        yAxisLabelFormatter={(val) => {
+                          if (val >= 1000000) return `₱${(val / 1000000).toFixed(1)}M`;
+                          if (val >= 1000) return `₱${(val / 1000).toFixed(0)}k`;
+                          return `₱${Math.round(val)}`;
+                        }}
+                        isAnimated
+                        animationDuration={900}
+                        scrollAnimation={true}
+                        pointerConfig={{
+                          pointerStripHeight: 170,
+                          pointerStripColor: 'rgba(0, 194, 255, 0.15)',
+                          pointerStripWidth: 2,
+                          pointerColor: '#00C2FF',
+                          radius: 5,
+                          pointerLabelWidth: 100,
+                          pointerLabelHeight: 76,
+                          activatePointersOnLongPress: true,
+                          autoAdjustPointerLabelPosition: true,
+                          pointerComponent: () => (
+                            <View style={styles.focusDot} />
+                          ),
+                          pointerLabelComponent: items => (
+                            <View style={styles.tooltipBox}>
+                              <Text style={styles.tooltipLabel}>{items[0].label || selectedChartLabel}</Text>
+                              <Text style={styles.tooltipValue}>₱{items[0].value.toLocaleString()}</Text>
+                            </View>
+                          ),
+                        }}
+                      />
+                    </View>
+                  </PinchGestureHandler>
                 ) : (
                   <View style={styles.emptyChartState}>
                     <Text style={styles.emptyText}>No revenue history available yet.</Text>
@@ -377,12 +470,12 @@ export default function MerchantHomeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {events.length === 0 ? (
+              {activeEventsList.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>No events found.</Text>
+                  <Text style={styles.emptyText}>No active events found.</Text>
                 </View>
               ) : (
-                events.map((event) => {
+                activeEventsList.map((event) => {
                   return (
                     <TouchableOpacity
                       key={event.id?.toString() || Math.random().toString()}
@@ -480,7 +573,9 @@ const styles = StyleSheet.create({
 
   // Chart Section
   chartSection: { paddingHorizontal: 20, marginBottom: 35 },
-  chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  chartHeader: { marginBottom: 18 },
+  chartHeaderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  chartTabsWrapper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   chartSubtitle: { color: '#7E97B3', fontSize: 12, marginTop: 4 },
   tabContainer: { flexDirection: 'row', backgroundColor: '#0B1623', borderRadius: 16, padding: 4, borderWidth: 1, borderColor: '#1A2A44' },
   tabBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, marginHorizontal: 2 },
@@ -532,6 +627,8 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginTop: -30, 
   },
+  periodTotalValue: { color: '#00C2FF', fontSize: 22, fontWeight: '900', letterSpacing: -1 },
+  periodTotalTitle: { color: '#4A8AAF', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: -2 },
   tooltipLabel: {
     color: '#4A8AAF',
     fontSize: 10,
@@ -580,4 +677,8 @@ const styles = StyleSheet.create({
   stubData: { alignItems: 'center' },
   stubValue: { color: '#00C2FF', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
   stubLabel: { color: '#2E4A62', fontSize: 8, fontWeight: '800', letterSpacing: 1.5, marginTop: 1 },
+
+  // Empty State
+  emptyState: {alignItems: 'start' },
+  emptyText: { color: '#4A8AAF', fontSize: 13, fontStyle: 'italic' },
 });

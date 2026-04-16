@@ -53,8 +53,8 @@ export default function HomeScreen({ navigation }) {
   const [error, setError] = useState(null);
   const { userInfo } = useContext(AuthContext);
 
-  const [setFavorites] = useState([2])
   const [activeIndex, setActiveIndex] = useState(1);
+  const [recentPageIndex, setRecentPageIndex] = useState(0);
   const scrollRef = useRef(null)
 
   const fetchEvents = async (isRefresh = false) => {
@@ -131,17 +131,22 @@ export default function HomeScreen({ navigation }) {
 
   const allFutureEvents = [...activeEvents, ...upcomingEvents];
 
-  // Hero: Show Active first, then Upcoming — both together
+  // Hero: Show Active first, then Upcoming
   const heroData = [...activeEvents, ...upcomingEvents].slice(0, 5);
 
   // Don't Miss: Future items happening this week (within 7 days)
   const missThisWeek = allFutureEvents.filter(e => (e.event_date || '') <= nextWeekStr).slice(0, 8);
 
-  // Explore: Show all active, incoming, ongoing
-  const exploreEvents = allFutureEvents;
+  // Explore: Show only first 5
+  const exploreEvents = allFutureEvents.slice(0, 5);
 
-  // Recent: Past or Completed events explicitly fetched from API
-  const recentEvents = pastEventsData.slice(0, 10);
+  // Recent: Past or Completed events
+  const RECENT_PER_PAGE = 5;
+  const recentPagesCount = Math.ceil(pastEventsData.length / RECENT_PER_PAGE);
+  const recentEvents = pastEventsData.slice(
+    recentPageIndex * RECENT_PER_PAGE,
+    (recentPageIndex + 1) * RECENT_PER_PAGE
+  );
 
   const clonedHeroEvents = heroData.length > 0
     ? [heroData[heroData.length - 1], ...heroData, heroData[0]]
@@ -414,7 +419,24 @@ export default function HomeScreen({ navigation }) {
 
           {/* Recent Events */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Events</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Events</Text>
+              {recentPagesCount > 1 && (
+                <View style={styles.miniPager}>
+                  {Array.from({ length: recentPagesCount }).map((_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => setRecentPageIndex(i)}
+                      style={[
+                        styles.miniDot,
+                        i === recentPageIndex && styles.miniDotActive
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+
             {recentEvents.length > 0 ? (
               recentEvents.map(item => {
                 const d = new Date(item.event_date);
@@ -422,7 +444,11 @@ export default function HomeScreen({ navigation }) {
                 const day = d.getDate().toString().padStart(2, '0');
 
                 return (
-                  <TouchableOpacity key={item.id} style={[styles.listCard, styles.listCardPast]}>
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.listCard, styles.listCardPast]}
+                    onPress={() => navigation.navigate('AttendeeEventDetails', { event: item })}
+                  >
                     <View style={[styles.listDateBox, styles.listDateBoxPast]}>
                       <Text style={[styles.listDateNum, styles.listTextPast]}>{day}</Text>
                       <Text style={[styles.listDateMonth, styles.listTextPast]}>{month}</Text>
@@ -489,7 +515,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 20,
-    backgroundColor: '#FFD700', // Matching category tag color
+    backgroundColor: '#FFD700',
   },
   heroOverlay: { flex: 1, padding: 24, justifyContent: 'flex-end' },
   heroTag: {
@@ -516,12 +542,10 @@ const styles = StyleSheet.create({
 
   // Sections
   section: { marginBottom: 32, paddingHorizontal: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', marginBottom: 10 },
   seeMoreBtn: { color: '#00C2FF', fontSize: 13, fontWeight: '700' },
-  emptySectionText: {
-    color: '#3D6080', fontSize: 14, fontStyle: 'italic', marginTop: 4, marginBottom: 24
-  },
+  emptySectionText: { color: '#3D6080', fontSize: 14, fontStyle: 'italic' },
 
   // Horizontal Cards (Don't Miss)
   verticalCard: {
@@ -586,4 +610,21 @@ const styles = StyleSheet.create({
   listTitle: { color: '#FFF', fontSize: 16, fontWeight: '700', marginBottom: 4 },
   listDetails: { color: '#3D6080', fontSize: 12 },
   listChevron: { color: '#132035', fontSize: 24, marginLeft: 8 },
+
+  // Standardized Empty State
+  emptyWrap: {
+    alignItems: 'start'
+  },
+  emptyTitle: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  emptySub: { color: '#4A8AAF', fontSize: 12, lineHeight: 18 },
+
+  // Pagination Styles
+  miniPager: { flexDirection: 'row', gap: 4 },
+  miniDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(74, 138, 175, 0.3)' },
+  miniDotActive: { width: 12, backgroundColor: '#00C2FF' },
+
+  pageControls: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  pageBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#0B1623', borderRadius: 8, borderWidth: 1, borderColor: '#132035' },
+  pageBtnText: { color: '#00C2FF', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  pageIndicator: { color: '#4A8AAF', fontSize: 9, fontWeight: '700', letterSpacing: 1 },
 });
