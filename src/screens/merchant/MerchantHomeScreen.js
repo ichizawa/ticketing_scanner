@@ -47,10 +47,12 @@ export default function MerchantHomeScreen({ navigation }) {
     return Math.max((width - 90) / points, 18);
   };
 
-  // Enable LayoutAnimation for Android smooth transitions
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
+      try {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      } catch (e) {
+      }
     }
   }, []);
 
@@ -76,7 +78,6 @@ export default function MerchantHomeScreen({ navigation }) {
       return { week: [], month: [], year: [] };
     }
 
-    // Ensures we always have at least 2 points to draw a line
     const ensureTwoPoints = (data) => {
       if (data.length === 1) {
         return [{ value: 0, label: '' }, data[0]];
@@ -506,7 +507,7 @@ const styles = StyleSheet.create({
   emptyChartState: {
     height: 220,
     alignItems: 'center',
-    justify相对于: 'center'
+    justifyContent: 'center'
   },
   focusDot: {
     width: 10,
