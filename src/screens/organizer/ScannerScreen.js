@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, Animated, Dimensions, StatusBar, TextInput } from 'react-native'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import NetInfo from '@react-native-community/netinfo'
 import { useIsFocused } from '@react-navigation/native'
@@ -15,7 +16,7 @@ export default function ScannerScreen({ navigation }) {
   const isFocused = useIsFocused()
   const { userInfo } = useContext(AuthContext)
   const [permission, requestPermission] = useCameraPermissions()
-  
+
   const [isPinVerified, setIsPinVerified] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [isVerifyingPin, setIsVerifyingPin] = useState(false)
@@ -27,8 +28,8 @@ export default function ScannerScreen({ navigation }) {
   useEffect(() => {
     if (!isFocused) {
       setIsPinVerified(false)
-      setPinInput('') 
-      setPinError('') 
+      setPinInput('')
+      setPinError('')
     }
   }, [isFocused])
 
@@ -52,7 +53,7 @@ export default function ScannerScreen({ navigation }) {
 
     try {
       const response = await fetch(`${API_BASE_URL}/staff/verify-pin`, {
-        method: 'POST', 
+        method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ export default function ScannerScreen({ navigation }) {
       payload?.data?.is_scanned ??
       payload?.is_scanned ??
       payload?.is_redeemed
-      
+
     if (wasScanned || combinedText.includes('already scanned') || combinedText.includes('already used') || combinedText.includes('used')) {
       return 'used'
     }
@@ -154,7 +155,7 @@ export default function ScannerScreen({ navigation }) {
       if (isNaN(d.getTime())) return String(dateInput);
 
       const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0'); 
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
       const hh = String(d.getHours()).padStart(2, '0');
       const min = String(d.getMinutes()).padStart(2, '0');
@@ -351,9 +352,9 @@ export default function ScannerScreen({ navigation }) {
 
   const getStatusConfig = (status) => {
     switch (status) {
-      case 'valid': return { color: '#00E5A0', bg: '#001A12', label: 'VALID TICKET', icon: '✓', borderColor: '#00E5A0' }
-      case 'invalid': return { color: '#FF4D6A', bg: '#1A0008', label: 'INVALID TICKET', icon: '✕', borderColor: '#FF4D6A' }
-      case 'used': return { color: '#FFB84D', bg: '#1A1000', label: 'ALREADY SCANNED', icon: '!', borderColor: '#FFB84D' }
+      case 'valid': return { color: '#00E5A0', bg: '#001A12', label: 'VALID TICKET', icon: 'check-circle-outline', borderColor: '#00E5A0' }
+      case 'invalid': return { color: '#FF4D6A', bg: '#1A0008', label: 'INVALID TICKET', icon: 'close-circle-outline', borderColor: '#FF4D6A' }
+      case 'used': return { color: '#FFB84D', bg: '#1A1000', label: 'ALREADY SCANNED', icon: 'alert-circle-outline', borderColor: '#FFB84D' }
       default: return {}
     }
   }
@@ -387,40 +388,97 @@ export default function ScannerScreen({ navigation }) {
   // --- NEW: PIN Verification View ---
   if (!isPinVerified) {
     return (
-      <View style={[styles.root, styles.permissionWrapper]}>
+      <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#050A14" />
+
+        <View style={styles.bgOrb1} />
+        <View style={styles.bgOrb2} />
+        {[...Array(6)].map((_, i) => (
+          <View key={i} style={[styles.gridLine, { top: (height / 6) * i }]} />
+        ))}
+
         <SafeAreaView style={styles.permissionSafeArea}>
           <Header navigation={navigation} />
-          <View style={styles.permissionCard}>
-            <Text style={styles.permissionTitle}>Security Required</Text>
-            <Text style={styles.permissionText}>
-              Enter your staff PIN to unlock the ticket scanner.
-            </Text>
-            
-            <TextInput
-              style={styles.pinInput}
-              value={pinInput}
-              onChangeText={(text) => {
-                setPinInput(text)
-                setPinError('')
-              }}
-              keyboardType="numeric"
-              secureTextEntry
-              maxLength={6}
-              placeholder="••••"
-              placeholderTextColor="#3D6080"
-              editable={!isVerifyingPin}
-            />
-            
+
+          <View style={styles.securityHeader}>
+            <Text style={styles.welcomeText}>SCANNER ACCESS</Text>
+            <Text style={styles.businessName}>Security Required</Text>
+          </View>
+
+          <View style={styles.securityCard}>
+            <View style={styles.securityCardHeader}>
+              <View style={styles.securityIconWrap}>
+                <MaterialCommunityIcons name="shield-lock-outline" size={24} color="#00C2FF" />
+              </View>
+              <Text style={styles.securityCardText}>
+                Enter your authorized staff PIN to unlock the live ticket scanning module.
+              </Text>
+            </View>
+
+            <View style={styles.pinGridContainer}>
+              <TextInput
+                style={styles.hiddenPinInput}
+                value={pinInput}
+                onChangeText={(text) => {
+                  if (text.length <= 6) {
+                    setPinInput(text);
+                    setPinError('');
+                  }
+                }}
+                keyboardType="numeric"
+                secureTextEntry
+                maxLength={6}
+                autoFocus={true}
+                editable={!isVerifyingPin}
+              />
+
+              <View style={styles.pinBoxesRow}>
+                {[...Array(6)].map((_, i) => {
+                  const isFilled = i < pinInput.length;
+                  const isActive = i === pinInput.length;
+                  return (
+                    <View
+                      key={i}
+                      style={[
+                        styles.pinBox,
+                        isFilled && styles.pinBoxFilledStyle,
+                        isActive && styles.pinBoxActiveStyle
+                      ]}
+                    >
+                      {isFilled && <View style={styles.pinBoxDotStyle} />}
+                      {isActive && <View style={styles.pinBoxCursorStyle} />}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
             {pinError ? <Text style={styles.errorText}>{pinError}</Text> : null}
 
-            <TouchableOpacity 
-              style={[styles.permissionBtn, { marginTop: 14 }]} 
+            <TouchableOpacity
+              style={{
+                height: 56,
+                borderRadius: 16,
+                marginTop: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: pinInput.length < 6 ? 'rgba(5, 10, 20, 0.5)' : '#00C2FF',
+                borderWidth: pinInput.length < 6 ? 1 : 0,
+                borderColor: 'rgba(0, 194, 255, 0.15)',
+                width: '100%',
+                flexDirection: 'row',
+              }}
               onPress={handleVerifyPin}
-              disabled={isVerifyingPin}
+              disabled={isVerifyingPin || pinInput.length < 4}
             >
-              <Text style={styles.permissionBtnText}>
-                {isVerifyingPin ? 'Verifying...' : 'Unlock Scanner'}
+              <MaterialCommunityIcons
+                name={isVerifyingPin ? "loading" : "shield-key-outline"}
+                size={20}
+                color="#FFFFFF"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 }}>
+                {isVerifyingPin ? 'VERIFYING...' : 'UNLOCK SCANNER'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -498,18 +556,6 @@ export default function ScannerScreen({ navigation }) {
 
         <View style={styles.controls}>
           <TouchableOpacity
-            style={styles.ctrlBtn}
-            onPress={() => {
-              setLastScannedValue(null)
-              setIsScanning(true)
-              setIsVerifying(false)
-            }}
-          >
-            <Text style={styles.ctrlIcon}>↺</Text>
-            <Text style={styles.ctrlLabel}>RESET</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={styles.mainScanBtn}
             onPress={() => {
               setLastScannedValue(null)
@@ -518,15 +564,10 @@ export default function ScannerScreen({ navigation }) {
           >
             <View style={styles.mainScanRing}>
               <View style={styles.mainScanCore}>
-                <Text style={styles.mainScanIcon}>◈</Text>
+                <MaterialCommunityIcons name="broadcast" size={24} color="#00C2FF" />
                 <Text style={styles.mainScanLabel}>{isVerifying ? 'WAIT' : 'LIVE'}</Text>
               </View>
             </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.ctrlBtn} onPress={dismissResult}>
-            <Text style={styles.ctrlIcon}>✓</Text>
-            <Text style={styles.ctrlLabel}>NEXT</Text>
           </TouchableOpacity>
         </View>
 
@@ -535,6 +576,44 @@ export default function ScannerScreen({ navigation }) {
             <Text style={styles.manualBtnText}>Enter Ticket ID Manually</Text>
           </TouchableOpacity>
         </View>
+
+        {isManualEntry && (
+          <View style={styles.overlay}>
+            <TouchableOpacity style={styles.overlayBg} onPress={() => setIsManualEntry(false)} activeOpacity={1} />
+            <View style={styles.manualModal}>
+              <View style={styles.manualHeader}>
+                <View style={styles.manualIconWrap}>
+                  <MaterialCommunityIcons name="keyboard-outline" size={24} color="#00C2FF" />
+                </View>
+                <View>
+                  <Text style={styles.manualTitle}>Manual Entry</Text>
+                  <Text style={styles.manualSubTitle}>Enter the ticket ID code.</Text>
+                </View>
+              </View>
+
+              <TextInput
+                style={styles.manualInput}
+                value={manualTicketId}
+                onChangeText={setManualTicketId}
+                placeholder="e.g. TKT-88921"
+                placeholderTextColor="rgba(74, 96, 128, 0.4)"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                keyboardType="default"
+                autoFocus={true}
+              />
+
+              <View style={styles.manualButtons}>
+                <TouchableOpacity style={styles.manualCancelBtn} onPress={() => setIsManualEntry(false)}>
+                  <Text style={styles.manualCancelText}>CANCEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.manualSubmitBtn} onPress={handleManualSubmit}>
+                  <Text style={styles.manualSubmitText}>VERIFY TICKET</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
 
       </SafeAreaView>
 
@@ -554,7 +633,7 @@ export default function ScannerScreen({ navigation }) {
                   styles.resultIconRing,
                   { borderColor: statusConfig?.color, backgroundColor: `${statusConfig?.color}15` },
                 ]}>
-                  <Text style={[styles.resultIconText, { color: statusConfig?.color }]}>{statusConfig?.icon}</Text>
+                  <MaterialCommunityIcons name={statusConfig?.icon} size={32} color={statusConfig?.color} />
                 </View>
 
                 <View style={styles.resultHeading}>
@@ -594,38 +673,12 @@ export default function ScannerScreen({ navigation }) {
                 onPress={dismissResult}
               >
                 <Text style={styles.ctaBtnText}>
-                  {scanResult === 'valid' ? 'ADMIT GUEST  >' : 'SCAN NEXT  >'}
+                  {scanResult === 'valid' ? 'ADMIT GUEST' : 'SCAN NEXT'}
                 </Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
         </Animated.View>
-      )}
-
-      {isManualEntry && (
-        <View style={styles.overlay}>
-          <TouchableOpacity style={styles.overlayBg} onPress={() => setIsManualEntry(false)} activeOpacity={1} />
-          <View style={styles.manualModal}>
-            <Text style={styles.manualTitle}>Enter Ticket ID</Text>
-            <TextInput
-              style={styles.manualInput}
-              value={manualTicketId}
-              onChangeText={setManualTicketId}
-              placeholder="Ticket ID"
-              placeholderTextColor="#3D6080"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <View style={styles.manualButtons}>
-              <TouchableOpacity style={styles.manualCancelBtn} onPress={() => setIsManualEntry(false)}>
-                <Text style={styles.manualCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.manualSubmitBtn} onPress={handleManualSubmit}>
-                <Text style={styles.manualSubmitText}>Verify</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
       )}
     </View>
   )
@@ -672,7 +725,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   permissionBtn: {
-    alignItems: 'center', // Center text for PIN button usage too
+    alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: '#00C2FF',
     paddingHorizontal: 20,
@@ -685,27 +738,110 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // --- NEW: PIN Specific Styles ---
-  pinInput: {
+  // PIN Styles
+  securityHeader: { paddingHorizontal: 20, marginVertical: 24, marginTop: 40 },
+  welcomeText: { color: '#00C2FF', fontSize: 11, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
+  businessName: { color: '#FFFFFF', fontSize: 26, fontWeight: '800' },
+
+  securityCard: {
+    marginHorizontal: 20,
+    padding: 24,
+    borderRadius: 24,
+    // backgroundColor: '#0B1623',
+    borderWidth: 1,
+    borderColor: '#1A2A44',
+  },
+  securityCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 28, gap: 15 },
+  securityIconWrap: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: '#050A14',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#00C2FF',
+  },
+  securityIcon: { fontSize: 18 },
+  securityCardText: { flex: 1, color: '#7E97B3', fontSize: 13, lineHeight: 18 },
+
+  pinGridContainer: { marginBottom: 30, position: 'relative', height: 60, justifyContent: 'center' },
+  hiddenPinInput: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0,
+    zIndex: 1,
+  },
+  pinBoxesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 2,
+  },
+  pinBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 12,
     backgroundColor: '#050A14',
     borderWidth: 1,
     borderColor: '#132035',
-    borderRadius: 12,
-    color: '#FFFFFF',
-    fontSize: 24,
-    letterSpacing: 8,
-    textAlign: 'center',
-    paddingVertical: 16,
-    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  pinBoxFilledStyle: {
+    borderColor: '#1A2A44',
+  },
+  pinBoxActiveStyle: {
+    borderColor: '#00C2FF',
+    borderWidth: 1.5,
+  },
+  pinBoxDotStyle: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#00C2FF',
+  },
+  pinBoxCursorStyle: {
+    width: 2,
+    height: 22,
+    backgroundColor: '#00C2FF',
+    borderRadius: 1,
+  },
+
+  unlockBtnStyle: {
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#00C2FF',
+    marginTop: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+
+  },
+  unlockBtnActiveStyle: {
+    backgroundColor: '#00C2FF',
+  },
+  unlockBtnDisabled: { opacity: 0.7 },
+  unlockBtnEmptyStyle: {
+    backgroundColor: 'rgba(5, 10, 20, 0.5)',
+    borderWidth: 1,
+    borderColor: ''
+  },
+  unlockBtnTextStyle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1.5
+  },
+  unlockBtnTextEmptyStyle: {
+    color: 'rgba(0, 194, 255, 0.6)',
+  },
+
   errorText: {
     color: '#FF4D6A',
     fontSize: 12,
-    marginTop: 4,
-    marginBottom: 8,
+    fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 16,
   },
-  // --------------------------------
 
   offlineBanner: {
     marginHorizontal: 20,
@@ -875,58 +1011,90 @@ const styles = StyleSheet.create({
 
 
   manualModal: {
-    backgroundColor: '#0B1623',
+    backgroundColor: 'rgba(11, 22, 35, 0.98)',
     marginHorizontal: 20,
-    marginBottom: 300,
+    marginBottom: 400,
     padding: 24,
-    borderRadius: 18,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#132035',
+    borderColor: 'rgba(0, 194, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  manualHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 14,
+  },
+  manualIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 194, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 194, 255, 0.2)',
   },
   manualTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-    textAlign: 'center',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  manualSubTitle: {
+    color: '#4A6080',
+    fontSize: 12,
+    marginTop: 2,
   },
   manualInput: {
     backgroundColor: '#050A14',
     borderWidth: 1,
     borderColor: '#132035',
-    borderRadius: 12,
+    borderRadius: 16,
     color: '#FFFFFF',
     fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 24,
+    fontWeight: '600',
   },
   manualButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   manualCancelBtn: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    marginRight: 10,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#132035',
+    backgroundColor: 'transparent',
   },
   manualCancelText: {
-    color: '#3D6080',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#4A6080',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   manualSubmitBtn: {
-    flex: 1,
+    flex: 2,
     backgroundColor: '#00C2FF',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginLeft: 10,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
   },
   manualSubmitText: {
     color: '#050A14',
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 })

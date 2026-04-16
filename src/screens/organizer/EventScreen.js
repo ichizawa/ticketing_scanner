@@ -111,8 +111,29 @@ export default function EventScreen({ navigation }) {
       const json = await response.json();
       const eventData = json.data || json.events || json;
 
-      const formattedEvents = (Array.isArray(eventData) ? eventData : []).map(transformEvent);
-      setEvents(formattedEvents);
+      const baseEvents = (Array.isArray(eventData) ? eventData : []).map(transformEvent);
+
+      // Enriched with real-time scanned counts from the dedicated endpoint
+      const enrichedEvents = await Promise.all(baseEvents.map(async (ev) => {
+        try {
+          const sRes = await fetch(`${API_BASE_URL}/staff/tickets/scanned?event_id=${ev.id}`, {
+            headers: { "Authorization": `Bearer ${userInfo.token}`, "Accept": "application/json" }
+          });
+          if (sRes.ok) {
+            const sJson = await sRes.json();
+            // Fallback to various possible keys if 'data' is not a direct number
+            const count = typeof sJson.data === 'number' 
+              ? sJson.data 
+              : (sJson.scanned_tickets || sJson.scanned_count || sJson.data?.scanned_tickets || sJson.data?.scanned_count || 0);
+            return { ...ev, scanned: count };
+          }
+        } catch (e) {
+          console.log(`Failed to fetch scanned count for event ${ev.id}:`, e);
+        }
+        return ev;
+      }));
+
+      setEvents(enrichedEvents);
 
     } catch (err) {
       setError(err.message || 'Failed to load events');
