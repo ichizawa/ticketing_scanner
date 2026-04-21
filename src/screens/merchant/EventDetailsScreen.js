@@ -41,15 +41,21 @@ const getStatusConfig = (status) => {
   }
 };
 
-const getTierColor = (type, name) => {
-    const t = String(type || name || '').toLowerCase();
-    if (t.includes('gold') || t.includes('vip')) return '#FFD700';
-    if (t.includes('silver')) return '#C0C0C0'; 
-    if (t.includes('bronze')) return '#CD7F32'; 
-    if (t.includes('platinum')) return '#E5E4E2'; 
-    if (t.includes('early')) return '#00E5A0'; 
-    if (t.includes('gen') || t.includes('standard') || t.includes('regular')) return '#00C2FF'; 
-    return '#132035';
+const getTierColor = (ticket) => ticket?.color || '#132035';
+
+// Strip HTML tags and decode common entities
+const stripHtml = (html) => {
+  if (!html) return '';
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 };
 
 const BgDecor = () => (
@@ -213,7 +219,7 @@ export default function EventDetailsScreen({ route, navigation }) {
                   const tkRemaining = parseInt(ticket.quantity)     || 0;
                   const tkSold      = Math.max(0, tkTotal - tkRemaining);
                   const tkPct       = tkTotal > 0 ? Math.round((tkSold / tkTotal) * 100) : 0;
-                  const tc          = getTierColor(ticket.type, ticket.name);
+                  const tc          = getTierColor(ticket);
 
                   return (
                     <View key={ticket.id.toString()} style={[styles.tierCard, { borderColor: tc + '55' }]}>
@@ -264,9 +270,9 @@ export default function EventDetailsScreen({ route, navigation }) {
                 <Text
                   style={styles.aboutText}
                   numberOfLines={isDescExpanded ? undefined : 3}>
-                  {event.description}
+                  {stripHtml(event.description)}
                 </Text>
-                {(event.description && event.description.length > 150) && (
+                {(event.description && stripHtml(event.description).length > 150) && (
                   <TouchableOpacity
                     onPress={() => setIsDescExpanded(v => !v)}
                     style={styles.readMoreBtn}>

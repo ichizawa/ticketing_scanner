@@ -200,9 +200,9 @@ function EventSelectionView({ onSelect, navigation }) {
                     id: Object.keys(ticketTypes).length + 1,
                     name: typeName,
                     inclusions: ticket.inclusions,
-                    checkedIn: 0, 
+                    checkedIn: 0,
                     capacity: 0,
-                    color: typeName.toUpperCase().includes('VIP') ? '#FFAA00' : '#00C2FF', 
+                    color: ticket.color || '#132035',
                   }
                 }
                 ticketTypes[typeName].capacity += parseInt(ticket.original_qty) || 0

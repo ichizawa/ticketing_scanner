@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  StyleSheet, Text, View, TouchableOpacity, Dimensions, 
-  StatusBar, ScrollView, Image, Alert, ActivityIndicator, 
-  RefreshControl, LayoutAnimation, Platform, UIManager 
+import {
+  StyleSheet, Text, View, TouchableOpacity, Dimensions,
+  StatusBar, ScrollView, Image, Alert, ActivityIndicator,
+  RefreshControl, LayoutAnimation, Platform, UIManager
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Foundation } from '@expo/vector-icons';
@@ -91,7 +91,7 @@ export default function MerchantHomeScreen({ navigation }) {
 
       const value = Number(item[valueField] ?? item.value ?? item.amount ?? item.revenue ?? item.total) || 0;
       let rawLabel = String(item[labelField] ?? item.name ?? item.day ?? item.period ?? item.date ?? item.label ?? '');
-      
+
       // Smart date formatting if possible
       let label = rawLabel;
       if (rawLabel.includes('-') && rawLabel.length >= 7) {
@@ -261,7 +261,7 @@ export default function MerchantHomeScreen({ navigation }) {
     if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
     if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
     if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
-    
+
     const code = parseInt(status);
     switch (code) {
       case 0: return { label: 'UPCOMING', color: '#FFAA00' };
@@ -280,13 +280,13 @@ export default function MerchantHomeScreen({ navigation }) {
     const idealStep = (maxVal * 1.2) / chartNoOfSections;
     const magnitude = Math.pow(10, Math.floor(Math.log10(idealStep)));
     const normalizedStep = idealStep / magnitude;
-    
+
     let stepMultiplier = 1;
     if (normalizedStep > 5) stepMultiplier = 10;
     else if (normalizedStep > 2.5) stepMultiplier = 5;
     else if (normalizedStep > 2) stepMultiplier = 2.5;
     else if (normalizedStep > 1) stepMultiplier = 2;
-    
+
     chartStepValue = stepMultiplier * magnitude;
   }
   const chartMaxValue = chartStepValue * chartNoOfSections;
@@ -400,7 +400,7 @@ export default function MerchantHomeScreen({ navigation }) {
                         areaChart
                         curved
                         data={selectedChartData}
-                        width={width - 85} 
+                        width={width - 85}
                         hideDataPoints={false}
                         dataPointsColor="#00E5A0"
                         dataPointsRadius={4}
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 10,
-    overflow: 'visible' 
+    overflow: 'visible'
   },
   emptyChartState: {
     height: 220,
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
-    marginTop: -30, 
+    marginTop: -30,
   },
   periodTotalValue: { color: '#00C2FF', fontSize: 22, fontWeight: '900', letterSpacing: -1 },
   periodTotalTitle: { color: '#4A8AAF', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: -2 },
@@ -680,6 +680,6 @@ const styles = StyleSheet.create({
   stubLabel: { color: '#2E4A62', fontSize: 8, fontWeight: '800', letterSpacing: 1.5, marginTop: 1 },
 
   // Empty State
-  emptyState: {alignItems: 'start' },
+  emptyState: { alignItems: 'start' },
   emptyText: { color: '#4A8AAF', fontSize: 13, fontStyle: 'italic' },
 });

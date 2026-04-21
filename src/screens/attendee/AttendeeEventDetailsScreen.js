@@ -36,16 +36,22 @@ const getImageUrl = (path) => {
     return `${baseUrl}/storage/${cleanPath}`;
 };
 
-const getTierColor = (type, name) => {
-    const t = String(type || name || '').toLowerCase();
-    if (t.includes('gold') || t.includes('vip')) return '#FFD700';
-    if (t.includes('silver')) return '#C0C0C0'; 
-    if (t.includes('bronze')) return '#CD7F32'; 
-    if (t.includes('platinum')) return '#E5E4E2'; 
-    if (t.includes('early')) return '#00E5A0'; 
-    if (t.includes('gen') || t.includes('standard') || t.includes('regular')) return '#00C2FF'; 
-    return '#132035';
+// Strip HTML tags and decode common entities
+const stripHtml = (html) => {
+    if (!html) return '';
+    return html
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 };
+
+const getTierColor = (tier) => tier?.color || '#132035';
 
 export default function AttendeeEventDetailsScreen({ navigation, route }) {
     const { userInfo, logout } = useContext(AuthContext);
@@ -65,7 +71,7 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
         time: event?.event_time,
         venue: event?.event_venue,
         category: event?.category,
-        description: event?.description
+        description: stripHtml(event?.description)
     };
 
     const seatMap = event?.seat_plan_url;
@@ -243,7 +249,7 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                             </View>
                         ) : tickets.length > 0 ? tickets.map(tier => {
                             const isAvailable = tier.quantity > 0;
-                            const tierColor = getTierColor(tier.type, tier.name);
+                            const tierColor = getTierColor(tier);
                             return (
                                 <View key={tier.id} style={[styles.passCard, { borderColor: tierColor }]}>
                                     <View style={styles.passTop}>
