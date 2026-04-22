@@ -51,7 +51,7 @@ const getImageUrl = (path) => {
 };
 
 const parseScanStatus = (ticket) => {
-    const raw = ticket.sale?.is_scanned ?? ticket.is_scanned ?? ticket.scanned ?? ticket.sale?.scanned ?? ticket.sale?.scan_status ?? ticket.scan_status ?? ticket.sale?.status ?? ticket.status;
+    const raw = ticket.sale?.is_scanned ?? ticket.is_scanned ?? ticket.scanned ?? ticket.sale?.scanned ?? ticket.sale?.scan_status ?? ticket.scan_status;
     if (typeof raw === 'boolean') return raw ? 'scanned' : 'not_scanned';
     const value = String(raw ?? '').toLowerCase();
     if (['1', 'true', 'scanned', 'used', 'already scanned', 'already used', 'checked_in', 'checked-in', 'checked in'].some(k => value.includes(k))) {
@@ -60,7 +60,7 @@ const parseScanStatus = (ticket) => {
     if (['0', 'false', 'not_scanned', 'not scanned', 'unused', 'pending', 'unscanned', 'not used'].some(k => value.includes(k))) {
         return 'not_scanned';
     }
-    return 'unknown';
+    return 'not_scanned';
 };
 
 export default function HistoryScreen({ navigation }) {

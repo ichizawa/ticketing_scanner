@@ -6,6 +6,7 @@ import { Foundation } from '@expo/vector-icons'
 import { AuthContext } from '../../context/AuthContext'
 import Header from '../../components/Header'
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 
 const { width } = Dimensions.get('window');
 
@@ -36,7 +37,22 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+const getTodayStr = () => format(new Date(), 'yyyy-MM-dd');
+
+// Strip HTML tags and decode common entities
+const stripHtml = (html) => {
+  if (!html) return '';
+  return html
+    .replace(/<[^>]*>/g, ' ') 
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s{2,}/g, ' ')    
+    .trim();
+};
 
 const BgDecor = () => (
   <>
@@ -119,14 +135,21 @@ export default function HomeScreen({ navigation }) {
   };
 
   const today = getTodayStr();
-  const nextWeekDate = new Date();
-  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-  const nextWeekStr = nextWeekDate.toISOString().split('T')[0];
 
-  const isActive = (e) => e.status === 1 || e.status === '1' || String(e.status).toUpperCase() === 'ACTIVE' || String(e.status).toUpperCase() === 'LIVE';
+  // Calendar-based week: Monday–Sunday using date-fns
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // 1 = Monday
+  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+  const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+
+  const isActive = (e) =>
+    e.status === 1 || e.status === '1' ||
+    String(e.status).toUpperCase() === 'ACTIVE' ||
+    String(e.status).toUpperCase() === 'LIVE' ||
+    String(e.category).toUpperCase() === 'ONGOING';
   const isCompleted = (e) => e.status === 2 || e.status === '2' || String(e.status).toUpperCase() === 'COMPLETED';
 
-  const activeEvents = events.filter(e => isActive(e) && !isCompleted(e) && (!e.event_date || e.event_date >= today));
+  const activeEvents = events.filter(e => isActive(e) && !isCompleted(e));
   const upcomingEvents = events.filter(e => !isActive(e) && !isCompleted(e) && e.event_date && e.event_date >= today);
 
   const allFutureEvents = [...activeEvents, ...upcomingEvents];
@@ -134,8 +157,10 @@ export default function HomeScreen({ navigation }) {
   // Hero: Show Active first, then Upcoming
   const heroData = [...activeEvents, ...upcomingEvents].slice(0, 5);
 
-  // Don't Miss: Future items happening this week (within 7 days)
-  const missThisWeek = allFutureEvents.filter(e => (e.event_date || '') <= nextWeekStr).slice(0, 8);
+  // Don't Miss: Events falling within the current calendar week (Mon–Sun)
+  const missThisWeek = allFutureEvents
+    .filter(e => (e.event_date || '') >= weekStartStr && (e.event_date || '') <= weekEndStr)
+    .slice(0, 8);
 
   // Explore: Show only first 5
   const exploreEvents = allFutureEvents.slice(0, 5);
@@ -274,7 +299,7 @@ export default function HomeScreen({ navigation }) {
                             <Text style={[styles.heroMetaText, { color: '#FFF' }]}>{event.event_date}</Text>
                           </View>
                         </View> */}
-                        <Text style={styles.heroSubtitle} numberOfLines={2}>{event.description}</Text>
+                        <Text style={styles.heroSubtitle} numberOfLines={2}>{stripHtml(event.description)}</Text>
 
                         <TouchableOpacity
                           style={styles.heroFab}

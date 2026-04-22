@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 import Header from '../../components/Header';
+import { format } from 'date-fns';
 
 const { width } = Dimensions.get('window');
 
@@ -35,7 +36,7 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+const getTodayStr = () => format(new Date(), 'yyyy-MM-dd');
 
 const isActive = (e) =>
   e.status === 1 || e.status === '1' ||
@@ -101,7 +102,7 @@ export default function ExploreEventsScreen({ navigation }) {
       events.filter(
         (e) => !isCompleted(e) && (isActive(e) || (e.event_date || '') >= today)
       ),
-    [events]
+    [events, today]
   );
 
   // Build category list dynamically from the fetched events

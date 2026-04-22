@@ -37,6 +37,21 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
+// Strip HTML tags and decode common entities
+const stripHtml = (html) => {
+  if (!html) return '';
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};
+
 
 const getStatusConfig = (status) => {
   const s = String(status || '').toUpperCase();
@@ -329,9 +344,9 @@ export default function ManageEventScreen({ navigation }) {
                 style={styles.cardAboutText}
                 numberOfLines={isExpanded ? undefined : 2}
               >
-                {item.description}
+                {stripHtml(item.description)}
               </Text>
-              {item.description.length > 100 && (
+              {stripHtml(item.description).length > 100 && (
                 <TouchableOpacity
                   onPress={() => setIsExpanded(!isExpanded)}
                   style={styles.cardReadMore}
