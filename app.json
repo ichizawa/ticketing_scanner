@@ -39,13 +39,7 @@
     },
     "owner": "ichizawa",
     "plugins": [
-      [
-        "react-native-vision-camera",
-        {
-          "enableCodeScanner": true,
-          "enableFrameProcessors": true
-        }
-      ],
+      "expo-camera",
       "expo-font",
       "expo-splash-screen"
     ]
