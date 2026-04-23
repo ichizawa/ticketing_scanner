@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Foundation } from '@expo/vector-icons';
 import Header from '../../components/Header';
 import { AuthContext } from '../../context/AuthContext';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL, IMAGE_BASE_URL } from '../../config';
 
 const { width, height } = Dimensions.get('window');
 const formatTime = (time) => {
@@ -23,6 +23,18 @@ const formatTime = (time) => {
   }
 };
 
+const getImageUrl = (path) => {
+  if (!path || path === 'null') return null;
+  if (path.startsWith('http')) return path;
+
+  const baseUrl = IMAGE_BASE_URL.endsWith('/')
+    ? IMAGE_BASE_URL.slice(0, -1)
+    : IMAGE_BASE_URL;
+
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+};
+
 const getStatusConfig = (status) => {
   const s = String(status || '').toUpperCase();
   if (s.includes('UPCOMING')) return { label: 'UPCOMING', color: '#FFAA00' };
@@ -30,7 +42,7 @@ const getStatusConfig = (status) => {
   if (s.includes('ACTIVE')) return { label: 'ACTIVE', color: '#00E5A0' };
   if (s.includes('COMPLETED') || s.includes('PAST')) return { label: 'COMPLETED', color: '#4A5568' };
   if (s.includes('CANCELLED')) return { label: 'CANCELLED', color: '#FF5733' };
-  
+
   const code = parseInt(status);
   switch (code) {
     case 0: return { label: 'UPCOMING', color: '#FFAA00' };
@@ -81,14 +93,14 @@ export default function EventDetailsScreen({ route, navigation }) {
   const statusConfig = getStatusConfig(event.status);
   const statusColor = statusConfig.color;
 
-  const dynamicTotal    = tickets.reduce((s, t) => s + (parseInt(t.original_qty) || parseInt(t.quantity) || 0), 0);
+  const dynamicTotal = tickets.reduce((s, t) => s + (parseInt(t.original_qty) || parseInt(t.quantity) || 0), 0);
   const dynamicRemaining = tickets.reduce((s, t) => s + (parseInt(t.quantity) || 0), 0);
-  const dynamicSold     = Math.max(0, dynamicTotal - dynamicRemaining);
+  const dynamicSold = Math.max(0, dynamicTotal - dynamicRemaining);
 
   const finalTotal = parseInt(event.event_total_tickets) || dynamicTotal || 0;
   const finalSold = parseInt(event.tickets_sold) || dynamicSold || 0;
   const finalRemaining = (!loadingTickets && tickets.length > 0) ? dynamicRemaining : Math.max(0, finalTotal - finalSold);
-    
+
   const pct = finalTotal > 0 ? Math.round((finalSold / finalTotal) * 100) : 0;
 
   useEffect(() => { fetchEventTickets(); }, []);
@@ -111,7 +123,16 @@ export default function EventDetailsScreen({ route, navigation }) {
   };
 
 
-  const artists = event?.artists || [];
+  const performers = (() => {
+    try {
+      if (!event?.performers) return [];
+      const data = typeof event.performers === 'string' ? JSON.parse(event.performers) : event.performers;
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      console.error('Error parsing performers:', e);
+      return [];
+    }
+  })();
 
   const renderArtistCard = ({ item }) => {
     const isExpanded = expandedArtist === item.id;
@@ -121,7 +142,7 @@ export default function EventDetailsScreen({ route, navigation }) {
         style={styles.artistCard}
         onPress={() => setExpandedArtist(isExpanded ? null : item.id)}
       >
-        <Image source={{ uri: item.image }} style={styles.artistPhoto} />
+        <Image source={{ uri: item.image_url || getImageUrl(item.image) }} style={styles.artistPhoto} />
         <View style={[styles.artistInfoBar, isExpanded && { backgroundColor: 'rgba(5, 10, 20, 0.95)' }]}>
           <Text style={styles.artistName}>{item.name}</Text>
           <Text style={[styles.artistRole, { color: statusColor }]}>{item.role}</Text>
@@ -215,11 +236,11 @@ export default function EventDetailsScreen({ route, navigation }) {
                 </View>
               ) : tickets.length > 0 ? (
                 tickets.map((ticket, index) => {
-                  const tkTotal     = parseInt(ticket.original_qty) || 0;
-                  const tkRemaining = parseInt(ticket.quantity)     || 0;
-                  const tkSold      = Math.max(0, tkTotal - tkRemaining);
-                  const tkPct       = tkTotal > 0 ? Math.round((tkSold / tkTotal) * 100) : 0;
-                  const tc          = getTierColor(ticket);
+                  const tkTotal = parseInt(ticket.original_qty) || 0;
+                  const tkRemaining = parseInt(ticket.quantity) || 0;
+                  const tkSold = Math.max(0, tkTotal - tkRemaining);
+                  const tkPct = tkTotal > 0 ? Math.round((tkSold / tkTotal) * 100) : 0;
+                  const tc = getTierColor(ticket);
 
                   return (
                     <View key={ticket.id.toString()} style={[styles.tierCard, { borderColor: tc + '55' }]}>
@@ -292,19 +313,19 @@ export default function EventDetailsScreen({ route, navigation }) {
           </View>
 
           <FlatList
-            data={artists}
+            data={performers}
             horizontal
             renderItem={renderArtistCard}
             keyExtractor={item => item.id?.toString() || Math.random().toString()}
             contentContainerStyle={styles.artistList}
             showsHorizontalScrollIndicator={false}
-            ListEmptyComponent={<Text style={styles.emptyText}>No artists listed</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>No performers listed</Text>}
           />
 
           <View style={styles.body}>
 
             {/* Seat Plan */}
-            {event.seat_plan_url && (
+            {(event.seat_plan_url || event.seat_plan) && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>SEAT PLAN</Text>
                 <TouchableOpacity
@@ -312,7 +333,7 @@ export default function EventDetailsScreen({ route, navigation }) {
                   style={styles.seatCard}
                   onPress={() => setIsMapVisible(true)}>
                   <Image
-                    source={{ uri: event.seat_plan_url }}
+                    source={{ uri: event.seat_plan_url || getImageUrl(event.seat_plan) }}
                     style={styles.seatImage}
                     resizeMode="cover"
                   />
@@ -348,7 +369,7 @@ export default function EventDetailsScreen({ route, navigation }) {
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}>
             <Image
-              source={{ uri: event.seat_plan_url }}
+              source={{ uri: event.seat_plan_url || getImageUrl(event.seat_plan) }}
               style={styles.modalImage}
               resizeMode="contain"
             />
@@ -360,26 +381,26 @@ export default function EventDetailsScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: '#050A14' },
+  root: { flex: 1, backgroundColor: '#050A14' },
   safeArea: { flex: 1 },
 
   // BG Decor
-  bgOrb1:   { position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: '#00C2FF', top: -150, left: -200, opacity: 0.03 },
-  bgOrb2:   { position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: '#FF4D6A', bottom: -50, right: -150, opacity: 0.02 },
+  bgOrb1: { position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: '#00C2FF', top: -150, left: -200, opacity: 0.03 },
+  bgOrb2: { position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: '#FF4D6A', bottom: -50, right: -150, opacity: 0.02 },
   gridLine: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.025)' },
 
   // Header
-  header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 },
-  backBtn:       { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#132035' },
-  headerBranding:{ fontSize: 20 },
-  headerMedia:   { color: '#FFF', fontWeight: '600' },
-  headerTix:     { color: '#00C2FF', fontWeight: '800' },
-  profileBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#132035' },
+  headerBranding: { fontSize: 20 },
+  headerMedia: { color: '#FFF', fontWeight: '600' },
+  headerTix: { color: '#00C2FF', fontWeight: '800' },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#132035', padding: 2 },
   profileAvatar: { flex: 1, borderRadius: 16, backgroundColor: '#00C2FF', opacity: 0.5 },
 
   // Scroll
   scroll: { paddingBottom: 0 },
-  body:   { paddingHorizontal: 20 },
+  body: { paddingHorizontal: 20 },
 
   // Hero Banner (Attendee Style Sync)
   banner: { height: height * 0.28, width: '100%', position: 'relative' },
@@ -395,75 +416,75 @@ const styles = StyleSheet.create({
   heroMetaText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
   // Sales Card
-  card:       { backgroundColor: '#0B1623', borderRadius: 24, padding: 22, borderWidth: 1, borderColor: '#132035', marginTop: 20, marginBottom: 6, elevation: 10, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
-  cardRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardLabel:  { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
-  cardCountBig:{ color: '#FFF', fontSize: 32, fontWeight: '800' },
-  cardCapacity:{ color: '#3D6080', fontSize: 20, fontWeight: '600' },
-  pctBadge:   { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  pctBadgeText:{ fontSize: 18, fontWeight: '900' },
-  progressTrack:{ height: 10, backgroundColor: '#132035', borderRadius: 5, overflow: 'hidden', marginVertical: 14 },
+  card: { backgroundColor: '#0B1623', borderRadius: 24, padding: 22, borderWidth: 1, borderColor: '#132035', marginTop: 20, marginBottom: 6, elevation: 10, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  cardLabel: { color: '#3D6080', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 4 },
+  cardCountBig: { color: '#FFF', fontSize: 32, fontWeight: '800' },
+  cardCapacity: { color: '#3D6080', fontSize: 20, fontWeight: '600' },
+  pctBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  pctBadgeText: { fontSize: 18, fontWeight: '900' },
+  progressTrack: { height: 10, backgroundColor: '#132035', borderRadius: 5, overflow: 'hidden', marginVertical: 14 },
   progressFill: { height: '100%', borderRadius: 5 },
-  cardSubLeft:  { color: '#FFF', fontSize: 12, fontWeight: '600' },
+  cardSubLeft: { color: '#FFF', fontSize: 12, fontWeight: '600' },
   cardSubRight: { color: '#3D6080', fontSize: 12, fontWeight: '600' },
 
   // Section header
-  section:      { marginTop: 24, marginBottom: 4 },
+  section: { marginTop: 24, marginBottom: 4 },
   sectionTitle: { color: '#FFF', fontSize: 13, fontWeight: '800', letterSpacing: 2, marginBottom: 14 },
 
   // Ticket Tiers
-  tierCard:     { backgroundColor: '#0B1623', borderRadius: 20, padding: 18, borderWidth: 1.5, marginBottom: 12, overflow: 'hidden' },
-  tierTop:      { flexDirection: 'row', alignItems: 'center' },
-  tierName:     { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.4 },
-  tierPrice:    { fontSize: 17, fontWeight: '900' },
-  
+  tierCard: { backgroundColor: '#0B1623', borderRadius: 20, padding: 18, borderWidth: 1.5, marginBottom: 12, overflow: 'hidden' },
+  tierTop: { flexDirection: 'row', alignItems: 'center' },
+  tierName: { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.4 },
+  tierPrice: { fontSize: 17, fontWeight: '900' },
+
   tierDividerRow: { flexDirection: 'row', alignItems: 'center', height: 16, marginBottom: 12, marginHorizontal: -19.5, position: 'relative' },
   tierNotchLeft: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#050A14', position: 'absolute', left: -9, zIndex: 2, borderWidth: 1.5 },
   tierNotchRight: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#050A14', position: 'absolute', right: -9, zIndex: 2, borderWidth: 1.5 },
   tierDashedLine: { flex: 1, height: 1, marginHorizontal: 16, borderTopWidth: 1.5, borderStyle: 'dashed' },
 
   tierStatsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  tierStat:     { flex: 1, alignItems: 'center' },
-  tierStatVal:  { color: '#FFF', fontSize: 18, fontWeight: '800' },
-  tierStatLabel:{ color: '#3D6080', fontSize: 9, fontWeight: '700', marginTop: 2, letterSpacing: 1 },
-  tierDivider:  { width: 1, height: 32, marginHorizontal: 4 },
-  tierTrack:    { height: 5, backgroundColor: '#132035', borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
-  tierFill:     { height: '100%', borderRadius: 3 },
-  tierPct:      { fontSize: 10, fontWeight: '800', textAlign: 'right', letterSpacing: 1 },
+  tierStat: { flex: 1, alignItems: 'center' },
+  tierStatVal: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  tierStatLabel: { color: '#3D6080', fontSize: 9, fontWeight: '700', marginTop: 2, letterSpacing: 1 },
+  tierDivider: { width: 1, height: 32, marginHorizontal: 4 },
+  tierTrack: { height: 5, backgroundColor: '#132035', borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
+  tierFill: { height: '100%', borderRadius: 3 },
+  tierPct: { fontSize: 10, fontWeight: '800', textAlign: 'right', letterSpacing: 1 },
 
   // Empty / loading
-  loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
   loadingText: { fontSize: 14, fontWeight: '600' },
-  emptyText:   { color: '#A0AEC0', fontSize: 14 },
+  emptyText: { color: '#A0AEC0', fontSize: 14 },
 
   // Lineup horizontal scroll
-  artistList:   { paddingHorizontal: 15 },
-  artistCard:   { width: 150, height: 210, borderRadius: 20, overflow: 'hidden', marginHorizontal: 5, backgroundColor: '#0B1623' },
-  artistPhoto:  { width: '100%', height: '100%' },
-  artistInfoBar:{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, backgroundColor: 'rgba(5, 10, 20, 0.7)' },
-  artistName:   { color: '#FFF', fontSize: 12, fontWeight: '800' },
-  artistRole:   { fontSize: 8, fontWeight: '600', color: '#00C2FF' },
+  artistList: { paddingHorizontal: 15 },
+  artistCard: { width: 150, height: 210, borderRadius: 20, overflow: 'hidden', marginHorizontal: 5, backgroundColor: '#0B1623' },
+  artistPhoto: { width: '100%', height: '100%' },
+  artistInfoBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, backgroundColor: 'rgba(5, 10, 20, 0.7)' },
+  artistName: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  artistRole: { fontSize: 8, fontWeight: '600', color: '#00C2FF' },
   artistBioTextSmall: { color: '#A0AEC0', fontSize: 9, marginTop: 6, lineHeight: 13 },
 
   // Seat Plan
-  seatCard:    { height: 220, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0B1623', justifyContent: 'flex-end' },
-  seatImage:   { ...StyleSheet.absoluteFillObject },
+  seatCard: { height: 220, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0B1623', justifyContent: 'flex-end' },
+  seatImage: { ...StyleSheet.absoluteFillObject },
   seatHintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 14 },
-  seatHintText:{ color: '#FFF', fontSize: 12, fontWeight: '700' },
+  seatHintText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
   // About Event Styling
-  aboutText:    { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '500', lineHeight: 22 },
-  readMoreBtn:  { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aboutText: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '500', lineHeight: 22 },
+  readMoreBtn: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
   readMoreText: { color: '#00C2FF', fontSize: 13, fontWeight: '700' },
-  arrowIcon:    { width: 7, height: 7, borderRightWidth: 1.5, borderBottomWidth: 1.5, borderColor: '#00C2FF', transform: [{ rotate: '45deg' }], marginTop: -2 },
+  arrowIcon: { width: 7, height: 7, borderRightWidth: 1.5, borderBottomWidth: 1.5, borderColor: '#00C2FF', transform: [{ rotate: '45deg' }], marginTop: -2 },
   arrowRotated: { transform: [{ rotate: '225deg' }], marginTop: 2 },
 
   // Modal
-  modalBg:           { flex: 1, backgroundColor: 'rgba(5,10,20,0.98)', justifyContent: 'center', alignItems: 'center' },
-  modalCloseBtn:     { position: 'absolute', top: 60, right: 30, zIndex: 10 },
-  modalCloseText:    { color: '#FFF', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
-  modalScrollArea:   { width: '100%', flex: 1 },
-  modalScrollContent:{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 },
-  modalImage:        { width: width, height: height * 0.65 },
-  modalHint:         { color: '#4A5568', fontSize: 12, marginBottom: Platform.OS === 'ios' ? 44 : 24 },
+  modalBg: { flex: 1, backgroundColor: 'rgba(5,10,20,0.98)', justifyContent: 'center', alignItems: 'center' },
+  modalCloseBtn: { position: 'absolute', top: 60, right: 30, zIndex: 10 },
+  modalCloseText: { color: '#FFF', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  modalScrollArea: { width: '100%', flex: 1 },
+  modalScrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 },
+  modalImage: { width: width, height: height * 0.65 },
+  modalHint: { color: '#4A5568', fontSize: 12, marginBottom: Platform.OS === 'ios' ? 44 : 24 },
 });

@@ -263,7 +263,7 @@ export default function HistoryScreen({ navigation }) {
                 <View style={styles.actionRow}>
                     <TouchableOpacity
                         style={styles.detailsBtn}
-                        onPress={() => navigation.navigate('AttendeeEventDetails', { event: { ...item, id: item.event_id } })}
+                        onPress={() => navigation.navigate('AttendeeEventDetailsScreen', { event: { ...item, id: item.event_id } })}
                     >
                         <Text style={styles.detailsBtnText}>VIEW DETAILS</Text>
                     </TouchableOpacity>
@@ -408,8 +408,6 @@ export default function HistoryScreen({ navigation }) {
         </View>
     );
 }
-
-
 
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#050A14' },

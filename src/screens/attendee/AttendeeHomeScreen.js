@@ -37,20 +37,33 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
+const getPerformerImageUrl = (path) => {
+  if (!path || path === 'null') return null;
+  if (path.startsWith('http')) return path;
+
+  const baseUrl = IMAGE_BASE_URL.endsWith('/')
+    ? IMAGE_BASE_URL.slice(0, -1)
+    : IMAGE_BASE_URL;
+
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+};
+
+
 const getTodayStr = () => format(new Date(), 'yyyy-MM-dd');
 
 // Strip HTML tags and decode common entities
 const stripHtml = (html) => {
   if (!html) return '';
   return html
-    .replace(/<[^>]*>/g, ' ') 
+    .replace(/<[^>]*>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
-    .replace(/\s{2,}/g, ' ')    
+    .replace(/\s{2,}/g, ' ')
     .trim();
 };
 

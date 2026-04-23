@@ -36,6 +36,21 @@ const getImageUrl = (path) => {
     return `${baseUrl}/storage/${cleanPath}`;
 };
 
+// Use this for performer images (path is often like '1701739172-7230-67353.png')
+const getPerformerImageUrl = (path) => {
+    if (!path || path === 'null' || path === 'undefined') return null;
+    if (path.startsWith('http')) return path;
+
+    const baseUrl = IMAGE_BASE_URL.endsWith('/')
+        ? IMAGE_BASE_URL.slice(0, -1)
+        : IMAGE_BASE_URL;
+
+    // Performer images usually go directly under storage, not storage/public or storage/uploads
+    // Check if path starts with 'performers/' or just a filename
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return `${baseUrl}/storage/${cleanPath}`;
+};
+
 // Strip HTML tags and decode common entities
 const stripHtml = (html) => {
     if (!html) return '';
@@ -71,10 +86,23 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
         time: event?.event_time,
         venue: event?.event_venue,
         category: event?.category,
-        description: stripHtml(event?.description)
+        description: stripHtml(event?.description),
+        performers: (() => {
+            try {
+                const performersData = event?.performers;
+                if (typeof performersData === 'string') {
+                    return JSON.parse(performersData); // Parse the JSON string into an array
+                }
+                return Array.isArray(performersData) ? performersData : []; // If already an array, use it; else empty array
+            } catch (error) {
+                console.error('Error parsing performers JSON:', error);
+                return []; // Fallback to empty array on parse failure
+            }
+        })(),
+
     };
 
-    const seatMap = event?.seat_plan_url;
+    const seatMap = event?.seat_plan_url || getImageUrl(event?.seat_plan);
 
     useEffect(() => {
         if (event?.id && userInfo?.token) {
@@ -124,22 +152,26 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
         <Header navigation={navigation} onBack={() => navigation.goBack()} />
     );
 
-    const artists = event?.artists || [];
+    const performers = displayEvent.performers;
 
     const renderArtistCard = ({ item }) => {
         const isExpanded = expandedArtist === item.id;
+        const imageUri = getPerformerImageUrl(item.image); // Get the full image URL
         return (
             <TouchableOpacity
                 activeOpacity={0.9}
                 style={styles.artistCard}
                 onPress={() => setExpandedArtist(isExpanded ? null : item.id)}
             >
-                <Image source={{ uri: item.image }} style={styles.artistPhoto} />
+                <Image
+                    source={{ uri: imageUri }} // Use the constructed URL
+                    style={styles.artistPhoto}
+                />
                 <View style={[styles.artistInfoBar, isExpanded && { backgroundColor: 'rgba(5, 10, 20, 0.95)' }]}>
                     <Text style={styles.artistName}>{item.name}</Text>
-                    <Text style={styles.artistRole}>{item.role}</Text>
+                    <Text style={styles.artistRole}>{item.role || 'Performer'}</Text>
                     {isExpanded && (
-                        <Text style={styles.artistBioTextSmall}>{item.bio}</Text>
+                        <Text style={styles.artistBioTextSmall}>{item.bio || 'No bio available'}</Text>
                     )}
                 </View>
             </TouchableOpacity>
@@ -214,16 +246,16 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
 
                         {/* Line-up Gallery */}
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>LINE-UP</Text>
+                            <Text style={styles.sectionTitle}>PERFORMERS</Text>
                         </View>
                         <FlatList
-                            data={artists}
+                            data={performers}
                             horizontal
                             renderItem={renderArtistCard}
                             keyExtractor={item => item.id?.toString() || Math.random().toString()}
                             contentContainerStyle={styles.artistList}
                             showsHorizontalScrollIndicator={false}
-                            ListEmptyComponent={<Text style={styles.emptyText}>No artists listed</Text>}
+                            ListEmptyComponent={<Text style={styles.emptyText}>No performers listed</Text>}
                         />
 
                         {/* Seating Chart */}
@@ -262,7 +294,7 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                                             </View>
                                         </View>
                                         <Text style={[styles.passType, { color: tierColor !== '#132035' ? tierColor : '#7E97B3' }]}>{tier.type}</Text>
-                                        
+
                                         <View style={styles.passInclusionsRow}>
                                             <Foundation name="check" size={12} color="#4A8AAF" style={{ marginTop: 2 }} />
                                             <Text style={styles.passInclusionsText}>{tier.inclusions}</Text>
@@ -363,7 +395,7 @@ const styles = StyleSheet.create({
 
     // Modern Boarding Pass Style (Clean/Minimal)
     passCard: {
-        marginHorizontal: 20, backgroundColor: 'rgba(11, 22, 35, 0.5)', borderRadius: 16, marginBottom: 16, 
+        marginHorizontal: 20, backgroundColor: 'rgba(11, 22, 35, 0.5)', borderRadius: 16, marginBottom: 16,
         borderWidth: 1, borderColor: '#132035', overflow: 'hidden'
     },
     passTop: { padding: 16, paddingBottom: 12 },
@@ -372,7 +404,7 @@ const styles = StyleSheet.create({
     passBadge: { backgroundColor: 'transparent', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 10 },
     passBadgeText: { fontSize: 8, fontWeight: '800', letterSpacing: 1 },
     passType: { color: '#7E97B3', fontSize: 11, fontWeight: '600', marginBottom: 12 },
-    
+
     passInclusionsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
     passInclusionsText: { flex: 1, color: '#A0AEC0', fontSize: 11, lineHeight: 16 },
 
