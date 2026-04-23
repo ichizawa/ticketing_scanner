@@ -45,10 +45,8 @@ const getPerformerImageUrl = (path) => {
         ? IMAGE_BASE_URL.slice(0, -1)
         : IMAGE_BASE_URL;
 
-    // Performer images usually go directly under storage, not storage/public or storage/uploads
-    // Check if path starts with 'performers/' or just a filename
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    return `${baseUrl}/storage/${cleanPath}`;
+    return `${baseUrl}/images/events/performers/${cleanPath}`;
 };
 
 // Strip HTML tags and decode common entities
@@ -156,7 +154,9 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
 
     const renderArtistCard = ({ item }) => {
         const isExpanded = expandedArtist === item.id;
-        const imageUri = getPerformerImageUrl(item.image); // Get the full image URL
+        const imageUri = getPerformerImageUrl(item.image);
+        console.log(imageUri);
+        // Get the full image URL
         return (
             <TouchableOpacity
                 activeOpacity={0.9}
