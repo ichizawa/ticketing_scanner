@@ -36,6 +36,17 @@ const getImageUrl = (path) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
+const getPerformersList = (performers) => {
+  if (!performers) return null;
+  try {
+    const data = typeof performers === 'string' ? JSON.parse(performers) : performers;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return data.map(p => p.name).join(', ');
+  } catch (e) {
+    return null;
+  }
+};
+
 const getTodayStr = () => format(new Date(), 'yyyy-MM-dd');
 
 const isActive = (e) =>
@@ -173,6 +184,12 @@ export default function ExploreEventsScreen({ navigation }) {
         {/* Info */}
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.event_name}</Text>
+          
+          {getPerformersList(item.performers) && (
+            <Text style={styles.cardPerformers} numberOfLines={1}>
+              {getPerformersList(item.performers)}
+            </Text>
+          )}
           
           <View style={styles.cardInfoRow}>
             <View style={styles.cardMetaItem}>
@@ -460,6 +477,7 @@ const styles = StyleSheet.create({
   cardInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   cardMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1 },
   cardMetaTextSmall: { color: '#3D6080', fontSize: 9, fontWeight: '600', flex: 1 },
+  cardPerformers: { color: '#00C2FF', fontSize: 9, fontWeight: '700', marginBottom: 2 },
 
   // States
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
