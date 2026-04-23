@@ -89,12 +89,12 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
             try {
                 const performersData = event?.performers;
                 if (typeof performersData === 'string') {
-                    return JSON.parse(performersData); // Parse the JSON string into an array
+                    return JSON.parse(performersData);
                 }
-                return Array.isArray(performersData) ? performersData : []; // If already an array, use it; else empty array
+                return Array.isArray(performersData) ? performersData : []; 
             } catch (error) {
                 console.error('Error parsing performers JSON:', error);
-                return []; // Fallback to empty array on parse failure
+                return [];
             }
         })(),
 
@@ -169,10 +169,6 @@ export default function AttendeeEventDetailsScreen({ navigation, route }) {
                 />
                 <View style={[styles.artistInfoBar, isExpanded && { backgroundColor: 'rgba(5, 10, 20, 0.95)' }]}>
                     <Text style={styles.artistName}>{item.name}</Text>
-                    <Text style={styles.artistRole}>{item.role || 'Performer'}</Text>
-                    {isExpanded && (
-                        <Text style={styles.artistBioTextSmall}>{item.bio || 'No bio available'}</Text>
-                    )}
                 </View>
             </TouchableOpacity>
         );
